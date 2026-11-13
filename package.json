@@ -11,7 +11,8 @@
     "test": "vitest run",
     "predev": "tsx scripts/generate-sample-audio.ts --if-missing && node scripts/copy-alphatab-assets.mjs",
     "transcribe": "tsx scripts/transcribe.ts",
-    "prebuild": "node scripts/copy-alphatab-assets.mjs"
+    "prebuild": "node scripts/copy-alphatab-assets.mjs",
+    "musescore": "tsx scripts/to-musescore.ts"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.8.4",
