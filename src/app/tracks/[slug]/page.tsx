@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTrackBySlug } from "@/lib/tracks";
-import { Disc } from "@/components/Disc";
+import { TrackPlayer } from "@/components/TrackPlayer";
 import { formatDate, formatDuration } from "@/lib/format";
 import { KeyChords } from "@/components/KeyChords";
 import { NoteName } from "@/components/NoteName";
@@ -26,19 +26,19 @@ export default async function TrackPage({ params }: Props) {
       <Link href="/" className="text-sm text-neutral-500 hover:underline">
         ← All tracks
       </Link>
-      <Disc track={track} className="mx-auto mt-8 w-56 sm:w-64" />
-      <h1 className="mt-8 text-3xl font-bold tracking-tight">{track.title}</h1>
-      <p className="mt-2 text-neutral-500">
-        {track.genre && <>{track.genre} · </>}
-        {musicKey && (
-          <>
-            <NoteName value={musicKey.tonic} /> {musicKey.mode} ·{" "}
-          </>
-        )}
-        {formatDate(track.releasedAt)} · {formatDuration(track.durationSeconds)}
-      </p>
-      {track.description && <p className="mt-6">{track.description}</p>}
-      <audio controls preload="metadata" src={track.audioPath} className="mt-8 w-full" />
+      <TrackPlayer track={track}>
+        <h1 className="mt-8 text-3xl font-bold tracking-tight">{track.title}</h1>
+        <p className="mt-2 text-neutral-500">
+          {track.genre && <>{track.genre} · </>}
+          {musicKey && (
+            <>
+              <NoteName value={musicKey.tonic} /> {musicKey.mode} ·{" "}
+            </>
+          )}
+          {formatDate(track.releasedAt)} · {formatDuration(track.durationSeconds)}
+        </p>
+        {track.description && <p className="mt-6">{track.description}</p>}
+      </TrackPlayer>
       <div className="mt-6 flex items-center gap-4">
         <a
           href={`/api/tracks/${track.id}/download`}

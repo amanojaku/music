@@ -5,18 +5,11 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "re
 import type { Track } from "@/types/track";
 import { Disc } from "@/components/Disc";
 import { formatDate, formatDuration } from "@/lib/format";
-import { paletteFor } from "@/lib/colour";
-import { useVisualStyle } from "@/lib/hooks";
-import { AudioAnalysis } from "@/lib/visuals/analysis";
-import { VISUAL_STYLES, type VisualStyleId } from "@/lib/visuals/styles";
-import { Visualizer } from "@/components/Visualizer";
 
 export function CdShelf({ tracks }: { tracks: Track[] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const analysisRef = useRef<AudioAnalysis | null>(null);
-  const [visualStyle, setVisualStyle] = useVisualStyle();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -84,20 +77,9 @@ export function CdShelf({ tracks }: { tracks: Track[] }) {
     [tracks.length],
   );
 
-  // Route audio through the analyser. Must run inside the click that starts playback.
-  function connectAnalysis(audio: HTMLAudioElement) {
-    try {
-      analysisRef.current ??= new AudioAnalysis(audio);
-      void analysisRef.current.resume();
-    } catch {
-      // Web Audio unavailable: music still plays, visuals stay idle.
-    }
-  }
-
   function togglePlay(track: Track) {
     const audio = audioRef.current;
     if (!audio) return;
-    connectAnalysis(audio);
     if (playingId === track.id) {
       if (audio.paused) void audio.play();
       else audio.pause();
@@ -127,24 +109,10 @@ export function CdShelf({ tracks }: { tracks: Track[] }) {
 
   const active = tracks[activeIndex];
   const activeIsPlaying = playingId === active.id && isPlaying;
-  const playingIndex = tracks.findIndex((t) => t.id === playingId);
-  const visualTrack = playingIndex >= 0 ? tracks[playingIndex] : active;
 
   return (
     <section aria-label="Tracks">
-      <audio ref={audioRef} preload="none" crossOrigin="anonymous" />
-      <Visualizer
-        analysisRef={analysisRef}
-        styleId={visualStyle}
-        palette={paletteFor(visualTrack)}
-        playing={isPlaying}
-        getOrigin={() => {
-          const el = itemRefs.current[playingIndex >= 0 ? playingIndex : activeIndex];
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2, radius: r.width / 2 };
-        }}
-      />
+      <audio ref={audioRef} preload="none" />
 
       <div className="relative">
         <div
@@ -230,8 +198,6 @@ export function CdShelf({ tracks }: { tracks: Track[] }) {
             Download
           </a>
         </div>
-
-        <StylePicker value={visualStyle} onChange={setVisualStyle} />
       </div>
     </section>
   );
@@ -258,36 +224,5 @@ function ShelfArrow({
     >
       {direction === "prev" ? "‹" : "›"}
     </button>
-  );
-}
-
-const PICKER_OPTIONS: Array<{ id: VisualStyleId; label: string }> = [
-  ...VISUAL_STYLES.map(({ id, label }) => ({ id: id as VisualStyleId, label })),
-  { id: "off", label: "Off" },
-];
-
-function StylePicker({ value, onChange }: { value: VisualStyleId; onChange: (id: VisualStyleId) => void }) {
-  return (
-    <fieldset className="mt-8 flex flex-wrap items-center justify-center gap-2 text-sm">
-      <legend className="sr-only">Visuals</legend>
-      <span className="text-neutral-500" aria-hidden>
-        Visuals
-      </span>
-      {PICKER_OPTIONS.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          aria-pressed={value === option.id}
-          onClick={() => onChange(option.id)}
-          className={`rounded-full border px-3 py-1 transition ${
-            value === option.id
-              ? "border-foreground bg-foreground text-background"
-              : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </fieldset>
   );
 }
