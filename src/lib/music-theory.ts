@@ -48,6 +48,11 @@ function parseNote(note: string): { letter: Letter; pitch: number } {
   return { letter, pitch: mod12(NATURAL_PITCH[letter] + offset) };
 }
 
+/** Pitch class 0–11 (C = 0) of a note name such as "F#" or "Bb". */
+export function pitchClass(note: string): number {
+  return parseNote(note).pitch;
+}
+
 /** Spell a pitch class on a given letter, e.g. (6, "F") → "F#", (6, "G") → "Gb". */
 function spell(letter: Letter, pitch: number): string {
   let diff = mod12(pitch - NATURAL_PITCH[letter]);

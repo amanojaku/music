@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate:audio": "node scripts/generate-sample-audio.mjs",
-    "test": "vitest run"
+    "generate:audio": "tsx scripts/generate-sample-audio.ts",
+    "test": "vitest run",
+    "predev": "tsx scripts/generate-sample-audio.ts --if-missing"
   },
   "dependencies": {
     "next": "^16.4.6",
@@ -24,6 +25,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.4.6",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^3.2.7"
   },

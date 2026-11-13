@@ -1,13 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Track } from "@/types/track";
-
-/** Stable hue per track so each label gets its own colour. */
-function hueFor(seed: string): number {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  // Golden-angle spread keeps neighbouring tracks visually distinct.
-  return Math.round((h * 137.508) % 360);
-}
+import { hueFor } from "@/lib/colour";
 
 type Props = {
   track: Track;
@@ -27,9 +20,9 @@ export function Disc({ track, spinning = false, paused = false, className = "" }
   const year = new Date(track.releasedAt).getFullYear();
 
   return (
-    <div className={`relative aspect-square ${className}`}>
+    <div className={`cd-shadow relative aspect-square ${className}`}>
       <div
-        className={`absolute inset-0 ${spinning ? "cd-spinning" : ""}`}
+        className={`cd-disc absolute inset-0 ${spinning ? "cd-spinning" : ""}`}
         style={spinning ? { animationPlayState: paused ? "paused" : "running" } : undefined}
       >
         <div className="cd-surface" />
@@ -43,8 +36,8 @@ export function Disc({ track, spinning = false, paused = false, className = "" }
           </div>
         </div>
         <div className="cd-hub" />
-        <div className="cd-hole" />
       </div>
+      <div className="cd-hole" />
       <div className="cd-shine" />
     </div>
   );
