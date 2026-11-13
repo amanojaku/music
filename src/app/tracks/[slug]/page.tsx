@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTrackBySlug } from "@/lib/tracks";
+import { Disc } from "@/components/Disc";
 import { formatDate, formatDuration } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -22,7 +23,8 @@ export default async function TrackPage({ params }: Props) {
       <Link href="/" className="text-sm text-neutral-500 hover:underline">
         ← All tracks
       </Link>
-      <h1 className="mt-6 text-3xl font-bold tracking-tight">{track.title}</h1>
+      <Disc track={track} className="mx-auto mt-8 w-56 sm:w-64" />
+      <h1 className="mt-8 text-3xl font-bold tracking-tight">{track.title}</h1>
       <p className="mt-2 text-neutral-500">
         {[track.genre, formatDate(track.releasedAt), formatDuration(track.durationSeconds)]
           .filter(Boolean)

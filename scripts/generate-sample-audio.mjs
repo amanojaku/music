@@ -9,6 +9,9 @@ const samples = [
   { name: "first-light", freqs: [261.63, 329.63, 392.0] },
   { name: "night-drive", freqs: [220.0, 277.18, 329.63] },
   { name: "low-tide", freqs: [196.0, 246.94, 293.66] },
+  { name: "glass-houses", freqs: [293.66, 369.99, 440.0] },
+  { name: "copper-sky", freqs: [164.81, 207.65, 246.94] },
+  { name: "paper-boats", freqs: [349.23, 440.0, 523.25] },
 ];
 
 const rate = 22050;
