@@ -13,6 +13,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2026-03-14",
     audioPath: "/music/first-light.wav",
     coverUrl: null,
+    keyTonic: "C",
+    keyMode: "major",
     downloadCount: 12,
   },
   {
@@ -25,6 +27,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2026-06-02",
     audioPath: "/music/night-drive.wav",
     coverUrl: null,
+    keyTonic: "A",
+    keyMode: "minor",
     downloadCount: 34,
   },
   {
@@ -37,6 +41,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2026-09-21",
     audioPath: "/music/low-tide.wav",
     coverUrl: null,
+    keyTonic: "Eb",
+    keyMode: "major",
     downloadCount: 7,
   },
   {
@@ -49,6 +55,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2026-01-09",
     audioPath: "/music/glass-houses.wav",
     coverUrl: null,
+    keyTonic: "F#",
+    keyMode: "minor",
     downloadCount: 21,
   },
   {
@@ -61,6 +69,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2025-11-30",
     audioPath: "/music/copper-sky.wav",
     coverUrl: null,
+    keyTonic: "D",
+    keyMode: "major",
     downloadCount: 15,
   },
   {
@@ -73,6 +83,8 @@ export const mockTracks: Track[] = [
     releasedAt: "2025-08-17",
     audioPath: "/music/paper-boats.wav",
     coverUrl: null,
+    keyTonic: "Bb",
+    keyMode: "minor",
     downloadCount: 9,
   },
 ];

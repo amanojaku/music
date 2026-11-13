@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { getTrackBySlug } from "@/lib/tracks";
 import { Disc } from "@/components/Disc";
 import { formatDate, formatDuration } from "@/lib/format";
+import { KeyChords } from "@/components/KeyChords";
+import { NoteName } from "@/components/NoteName";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -17,6 +19,7 @@ export default async function TrackPage({ params }: Props) {
   const { slug } = await params;
   const track = await getTrackBySlug(slug);
   if (!track) notFound();
+  const musicKey = track.keyTonic && track.keyMode ? { tonic: track.keyTonic, mode: track.keyMode } : null;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -26,9 +29,13 @@ export default async function TrackPage({ params }: Props) {
       <Disc track={track} className="mx-auto mt-8 w-56 sm:w-64" />
       <h1 className="mt-8 text-3xl font-bold tracking-tight">{track.title}</h1>
       <p className="mt-2 text-neutral-500">
-        {[track.genre, formatDate(track.releasedAt), formatDuration(track.durationSeconds)]
-          .filter(Boolean)
-          .join(" · ")}
+        {track.genre && <>{track.genre} · </>}
+        {musicKey && (
+          <>
+            <NoteName value={musicKey.tonic} /> {musicKey.mode} ·{" "}
+          </>
+        )}
+        {formatDate(track.releasedAt)} · {formatDuration(track.durationSeconds)}
       </p>
       {track.description && <p className="mt-6">{track.description}</p>}
       <audio controls preload="metadata" src={track.audioPath} className="mt-8 w-full" />
@@ -41,6 +48,7 @@ export default async function TrackPage({ params }: Props) {
         </a>
         <span className="text-sm text-neutral-500">{track.downloadCount} downloads</span>
       </div>
+      {musicKey && <KeyChords musicKey={musicKey} />}
     </main>
   );
 }

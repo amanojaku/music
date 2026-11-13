@@ -9,6 +9,8 @@ create table public.tracks (
   released_at date not null default current_date,
   audio_path text not null,          -- key in the "tracks" storage bucket
   cover_url text,
+  key_tonic text check (key_tonic ~ '^[A-G][#b]?$'),   -- e.g. 'G', 'F#', 'Bb'
+  key_mode text check (key_mode in ('major', 'minor')),
   download_count integer not null default 0,
   created_at timestamptz not null default now()
 );
