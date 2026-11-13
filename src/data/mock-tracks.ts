@@ -16,6 +16,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "C",
     keyMode: "major",
+    tuning: null,
     downloadCount: 12,
   },
   {
@@ -30,6 +31,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "A",
     keyMode: "minor",
+    tuning: null,
     downloadCount: 34,
   },
   {
@@ -44,6 +46,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "Eb",
     keyMode: "major",
+    tuning: null,
     downloadCount: 7,
   },
   {
@@ -58,6 +61,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "F#",
     keyMode: "minor",
+    tuning: null,
     downloadCount: 21,
   },
   {
@@ -72,6 +76,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "D",
     keyMode: "major",
+    tuning: null,
     downloadCount: 15,
   },
   {
@@ -86,6 +91,7 @@ export const mockTracks: Track[] = [
     coverUrl: null,
     keyTonic: "Bb",
     keyMode: "minor",
+    tuning: null,
     downloadCount: 9,
   },
 ];

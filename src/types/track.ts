@@ -1,4 +1,4 @@
-import type { Mode, Tonic } from "@/lib/music-theory";
+import type { Mode, Tonic, Tuning } from "@/lib/music-theory";
 
 export interface Track {
   id: string;
@@ -16,5 +16,7 @@ export interface Track {
   /** Tonic in ASCII, e.g. "G", "F#", "Bb". Null if not set. */
   keyTonic: Tonic | null;
   keyMode: Mode | null;
+  /** Guitar tuning, strings low → high with octave, e.g. ["E2","A2","E3","G3","B3","E4"]. Null = standard. */
+  tuning: Tuning | null;
   downloadCount: number;
 }

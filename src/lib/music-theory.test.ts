@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { diatonicTriads, keyName, prettyNote, scaleNotes, type Key } from "./music-theory";
+import {
+  diatonicTriads,
+  keyName,
+  noteToMidi,
+  prettyNote,
+  scaleNotes,
+  STANDARD_TUNING,
+  tuningOffsets,
+  type Key,
+} from "./music-theory";
 
 const names = (key: Key) => diatonicTriads(key).map((c) => c.name);
 const numerals = (key: Key) => diatonicTriads(key).map((c) => c.numeral);
@@ -67,6 +76,36 @@ describe("diatonicTriads", () => {
 
   it("rejects invalid tonics", () => {
     expect(() => scaleNotes({ tonic: "H" as never, mode: "major" })).toThrow();
+  });
+});
+
+describe("tuning", () => {
+  it.each([
+    ["C4", 60],
+    ["A4", 69],
+    ["E2", 40],
+    ["F#3", 54],
+    ["Bb3", 58],
+    ["Cb4", 59],
+    ["B#3", 60],
+  ])("noteToMidi(%s) = %i", (note, midi) => {
+    expect(noteToMidi(note)).toBe(midi);
+  });
+
+  it("standard tuning has no offsets", () => {
+    expect(tuningOffsets(STANDARD_TUNING)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
+  it("EAEGBE raises the D string a whole step", () => {
+    expect(tuningOffsets(["E2", "A2", "E3", "G3", "B3", "E4"])).toEqual([0, 0, 2, 0, 0, 0]);
+  });
+
+  it("drop D lowers the low E a whole step", () => {
+    expect(tuningOffsets(["D2", "A2", "D3", "G3", "B3", "E4"])).toEqual([-2, 0, 0, 0, 0, 0]);
+  });
+
+  it("rejects notes without an octave", () => {
+    expect(() => noteToMidi("E")).toThrow();
   });
 });
 

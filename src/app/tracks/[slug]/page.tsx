@@ -5,6 +5,7 @@ import { getTrackBySlug } from "@/lib/tracks";
 import { TrackPlayer } from "@/components/TrackPlayer";
 import { formatDate, formatDuration } from "@/lib/format";
 import { KeyChords } from "@/components/KeyChords";
+import { TuningInfo } from "@/components/TuningInfo";
 import { NoteName } from "@/components/NoteName";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -49,6 +50,7 @@ export default async function TrackPage({ params }: Props) {
         <span className="text-sm text-neutral-500">{track.downloadCount} downloads</span>
       </div>
       {musicKey && <KeyChords musicKey={musicKey} />}
+      {track.tuning && <TuningInfo tuning={track.tuning} />}
     </main>
   );
 }

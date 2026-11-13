@@ -114,6 +114,31 @@ export function diatonicTriads(key: Key): DiatonicChord[] {
   });
 }
 
+// ---- Guitar tuning ----
+
+/** Strings low → high with octave (scientific pitch), e.g. ["E2", "A2", "D3", "G3", "B3", "E4"]. */
+export type Tuning = string[];
+
+export const STANDARD_TUNING: Tuning = ["E2", "A2", "D3", "G3", "B3", "E4"];
+
+/** MIDI note number of a note with octave, e.g. "E2" → 40, "C4" → 60, "F#3" → 54. */
+export function noteToMidi(note: string): number {
+  const match = /^([A-G](?:#{1,2}|b{1,2})?)(-?\d)$/.exec(note);
+  if (!match) throw new Error(`Invalid note with octave: ${note}`);
+  const name = match[1];
+  const octave = Number(match[2]);
+  const { letter } = parseNote(name);
+  // Use the raw offset (not mod 12) so "Cb4" is B3 and "B#3" is C4.
+  const offset = name.slice(1).startsWith("#") ? name.length - 1 : -(name.length - 1);
+  return 12 * (octave + 1) + NATURAL_PITCH[letter] + offset;
+}
+
+/** Semitones each string is retuned from standard (+ up, − down). Six-string tunings only. */
+export function tuningOffsets(tuning: Tuning): number[] {
+  if (tuning.length !== STANDARD_TUNING.length) throw new Error("Expected a six-string tuning");
+  return tuning.map((note, i) => noteToMidi(note) - noteToMidi(STANDARD_TUNING[i]));
+}
+
 /** "F#" → "F♯", "Bbb" → "B𝄫", "C##" → "C𝄪" */
 export function prettyNote(note: string): string {
   return note.replace("##", "𝄪").replace("bb", "𝄫").replace("#", "♯").replace(/(?<=^[A-G])b/, "♭");
