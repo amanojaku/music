@@ -12,6 +12,8 @@ export interface Track {
   releasedAt: string;
   /** Path/key of the audio file. Relative to /public for mock data; a Supabase Storage key later. */
   audioPath: string;
+  /** Full-quality file for downloads (e.g. WAV). Falls back to audioPath. */
+  downloadPath: string | null;
   coverUrl: string | null;
   /** Tonic in ASCII, e.g. "G", "F#", "Bb". Null if not set. */
   keyTonic: Tonic | null;

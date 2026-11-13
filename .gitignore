@@ -41,5 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated mock audio (npm run generate:audio)
-/public/music/mock/
+# audio: generated mocks (npm run generate:audio) and local test recordings
+/public/music/
+
+# local-only test tracks (see src/lib/tracks.ts)
+/src/data/local-tracks.json

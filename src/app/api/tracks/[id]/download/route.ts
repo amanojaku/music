@@ -19,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // Mock: serve from /public. With Supabase Storage, generate a signed URL
   // (createSignedUrl(path, 60, { download: filename })) and redirect to it instead.
   const publicDir = path.join(process.cwd(), "public");
-  const filePath = path.join(publicDir, track.audioPath);
+  const filePath = path.join(publicDir, track.downloadPath ?? track.audioPath);
   if (!filePath.startsWith(publicDir + path.sep)) {
     return new Response("Bad path", { status: 400 });
   }

@@ -7,7 +7,8 @@ create table public.tracks (
   genre text,
   duration_seconds integer not null,
   released_at date not null default current_date,
-  audio_path text not null,          -- key in the "tracks" storage bucket
+  audio_path text not null,          -- streaming copy (e.g. AAC) in the "tracks" storage bucket
+  download_path text,                -- full-quality file for downloads (e.g. WAV); falls back to audio_path
   cover_url text,
   key_tonic text check (key_tonic ~ '^[A-G][#b]?$'),   -- e.g. 'G', 'F#', 'Bb'
   key_mode text check (key_mode in ('major', 'minor')),
