@@ -2,6 +2,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getTrackById, incrementDownloadCount } from "@/lib/tracks";
 
+const AUDIO_TYPES: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".wav": "audio/wav",
+  ".flac": "audio/flac",
+  ".ogg": "audio/ogg",
+};
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const track = await getTrackById(id);
@@ -28,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const filename = `${track.title}${ext}`;
   return new Response(new Uint8Array(data), {
     headers: {
-      "Content-Type": ext === ".mp3" ? "audio/mpeg" : "audio/wav",
+      "Content-Type": AUDIO_TYPES[ext.toLowerCase()] ?? "application/octet-stream",
       "Content-Length": String(data.length),
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
     },
