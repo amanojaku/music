@@ -1,82 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Track } from "@/types/track";
+import { useRef, type ReactNode } from "react";
 import { Disc } from "@/components/Disc";
+import { usePlayer } from "@/components/PlayerContext";
 import { StylePicker } from "@/components/StylePicker";
 import { Visualizer } from "@/components/Visualizer";
 import { paletteFor } from "@/lib/colour";
 import { formatDuration } from "@/lib/format";
 import { useVisualStyle } from "@/lib/hooks";
-import { AudioAnalysis } from "@/lib/visuals/analysis";
-
-type Props = {
-  track: Track;
-  /** Rendered between the disc and the transport controls (title, details…). */
-  children?: ReactNode;
-};
 
 /**
- * Track page player: a clickable spinning disc, transport controls, and the
- * live visuals drawn behind the page, centred on the disc.
+ * Track page player UI: a clickable spinning disc, transport controls, and the
+ * live visuals drawn behind the page, centred on the disc. Must be inside
+ * <PlayerProvider>.
  */
-export function TrackPlayer({ track, children }: Props) {
-  const audioRef = useRef<HTMLAudioElement>(null);
+export function TrackPlayer({ children }: { children?: ReactNode }) {
+  const { track, analysisRef, isPlaying, hasStarted, currentTime, duration, toggle, seek } = usePlayer();
   const discRef = useRef<HTMLButtonElement>(null);
-  const analysisRef = useRef<AudioAnalysis | null>(null);
   const [visualStyle, setVisualStyle] = useVisualStyle();
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(track.durationSeconds);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    const onPlay = () => {
-      setIsPlaying(true);
-      setHasStarted(true);
-    };
-    const onPause = () => setIsPlaying(false);
-    const onTime = () => setCurrentTime(audio.currentTime);
-    const onMeta = () => Number.isFinite(audio.duration) && setDuration(audio.duration);
-    const events: Array<[string, () => void]> = [
-      ["play", onPlay],
-      ["pause", onPause],
-      ["ended", onPause],
-      ["timeupdate", onTime],
-      ["seeked", onTime],
-      ["loadedmetadata", onMeta],
-    ];
-    events.forEach(([e, fn]) => audio.addEventListener(e, fn));
-    return () => events.forEach(([e, fn]) => audio.removeEventListener(e, fn));
-  }, []);
-
-  function togglePlay() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    // Route audio through the analyser; must happen inside the click that starts playback.
-    try {
-      analysisRef.current ??= new AudioAnalysis(audio);
-      void analysisRef.current.resume();
-    } catch {
-      // Web Audio unavailable: music still plays, visuals stay idle.
-    }
-    if (audio.paused) void audio.play();
-    else audio.pause();
-  }
-
-  function seek(seconds: number) {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = seconds;
-    setCurrentTime(seconds);
-  }
 
   return (
     <>
-      <audio ref={audioRef} src={track.audioPath} preload="metadata" crossOrigin="anonymous" />
       <Visualizer
         analysisRef={analysisRef}
         styleId={visualStyle}
@@ -93,7 +37,7 @@ export function TrackPlayer({ track, children }: Props) {
       <button
         ref={discRef}
         type="button"
-        onClick={togglePlay}
+        onClick={toggle}
         aria-label={`${isPlaying ? "Pause" : "Play"} ${track.title}`}
         className="mx-auto mt-8 block w-56 rounded-full transition hover:scale-[1.02] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-foreground sm:w-64"
       >
@@ -105,7 +49,7 @@ export function TrackPlayer({ track, children }: Props) {
       <div className="mt-8 flex items-center gap-4">
         <button
           type="button"
-          onClick={togglePlay}
+          onClick={toggle}
           aria-label={isPlaying ? "Pause" : "Play"}
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-80"
         >

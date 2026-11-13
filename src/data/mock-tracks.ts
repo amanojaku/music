@@ -18,6 +18,8 @@ export const mockTracks: Track[] = [
     keyTonic: "C",
     keyMode: "major",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 12,
   },
   {
@@ -34,6 +36,8 @@ export const mockTracks: Track[] = [
     keyTonic: "A",
     keyMode: "minor",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 34,
   },
   {
@@ -50,6 +54,8 @@ export const mockTracks: Track[] = [
     keyTonic: "Eb",
     keyMode: "major",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 7,
   },
   {
@@ -66,6 +72,8 @@ export const mockTracks: Track[] = [
     keyTonic: "F#",
     keyMode: "minor",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 21,
   },
   {
@@ -82,6 +90,8 @@ export const mockTracks: Track[] = [
     keyTonic: "D",
     keyMode: "major",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 15,
   },
   {
@@ -98,6 +108,8 @@ export const mockTracks: Track[] = [
     keyTonic: "Bb",
     keyMode: "minor",
     tuning: null,
+    notationPath: null,
+    syncPath: null,
     downloadCount: 9,
   },
 ];

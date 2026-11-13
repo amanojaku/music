@@ -20,5 +20,9 @@ export interface Track {
   keyMode: Mode | null;
   /** Guitar tuning, strings low → high with octave, e.g. ["E2","A2","E3","G3","B3","E4"]. Null = standard. */
   tuning: Tuning | null;
+  /** MusicXML score for the notation view (draft from `npm run transcribe`, tidied in MuseScore). */
+  notationPath: string | null;
+  /** JSON sync points (bar → time in the recording) so the notation cursor follows the audio. */
+  syncPath: string | null;
   downloadCount: number;
 }

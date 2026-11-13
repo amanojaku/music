@@ -46,3 +46,9 @@ next-env.d.ts
 
 # local-only test tracks (see src/lib/tracks.ts)
 /src/data/local-tracks.json
+
+# generated notation (npm run transcribe) for local test tracks
+/public/notation/
+
+# copied from node_modules by scripts/copy-alphatab-assets.mjs
+/public/alphatab/

@@ -13,6 +13,8 @@ create table public.tracks (
   key_tonic text check (key_tonic ~ '^[A-G][#b]?$'),   -- e.g. 'G', 'F#', 'Bb'
   key_mode text check (key_mode in ('major', 'minor')),
   tuning text[] check (tuning is null or array_length(tuning, 1) = 6),  -- low → high, e.g. {E2,A2,E3,G3,B3,E4}; null = standard
+  notation_path text,                -- MusicXML score in storage
+  sync_path text,                    -- JSON sync points: [{barIndex, barPosition, barOccurence, millisecondOffset}]
   download_count integer not null default 0,
   created_at timestamptz not null default now()
 );

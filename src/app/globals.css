@@ -126,3 +126,20 @@ body {
     animation: none;
   }
 }
+
+/* ---------- Notation (alphaTab) ---------- */
+
+.notation-paper .at-cursor-bar {
+  background: rgb(255 214 0 / 0.22);
+}
+.notation-paper .at-cursor-beat {
+  background: rgb(37 99 235 / 0.8);
+  width: 3px;
+}
+.notation-paper .at-highlight * {
+  fill: #2563eb;
+  stroke: #2563eb;
+}
+.notation-paper .at-selection div {
+  background: rgb(37 99 235 / 0.1);
+}
