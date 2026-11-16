@@ -25,26 +25,200 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- Compact disc shelf ---------- */
+/* ---------- 3D CD carousel ---------- */
 
-.cd-shelf {
-  --disc-size: 14rem;
-  padding-inline: calc(50% - var(--disc-size) / 2);
-  scrollbar-width: none;
-  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+/* Stage: the camera. Case size drives everything; ring radius fits n cases round the circle. */
+.cd-stage {
+  --case-w: 10.5rem;
+  --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
+  --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
+  --radius: max(calc(var(--case-w) * 0.95), calc(var(--case-w) * 0.62 / tan(180deg / var(--n))));
+  height: calc(var(--case-h) * 2.05);
+  perspective: 1600px;
+  perspective-origin: 50% 30%;
+  overflow: clip;
+  touch-action: pan-y; /* horizontal drags turn the ring, vertical ones scroll the page */
+  cursor: grab;
 }
-.cd-shelf::-webkit-scrollbar {
-  display: none;
+.cd-stage:active {
+  cursor: grabbing;
 }
 @media (min-width: 640px) {
-  .cd-shelf {
-    --disc-size: 18rem;
+  .cd-stage {
+    --case-w: 16rem;
   }
 }
-.cd-item {
-  width: var(--disc-size);
-  height: var(--disc-size);
+
+/* Ring: pushed back by its radius (so the front case sits at normal size), tilted to show the circle. */
+.cd-ring {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(-8deg) translateZ(calc(-1 * var(--radius))) rotateY(calc(var(--turn) * -360deg / var(--n)));
+  transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.cd-ring[data-dragging] {
+  transition: none;
+}
+
+.cd-slot {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: var(--case-w);
+  height: var(--case-h);
+  margin-left: calc(var(--case-w) / -2);
+  margin-top: calc(var(--case-h) / -2);
+  padding: 0;
+  border: 0;
+  background: none;
+  transform-style: preserve-3d;
+  transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(var(--radius));
+  cursor: inherit;
+}
+.cd-slot:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 6px;
+}
+
+/* Jewel case: six faces round a box of --case-w × --case-h × --case-d. */
+.jewel-case {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.jewel-face {
+  position: absolute;
+  backface-visibility: hidden;
+}
+/* Fade cases towards the page background the further they are from the front. */
+.jewel-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--background);
+  opacity: var(--dim, 0);
+  pointer-events: none;
+  transition: opacity 500ms;
+}
+.jewel-front,
+.jewel-back {
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #111;
+  color: #fff;
+  font-size: calc(var(--case-w) * 0.075); /* CoverArt text scales in em */
+}
+.jewel-front {
+  transform: translateZ(calc(var(--case-d) / 2));
+}
+.jewel-back {
+  transform: rotateY(180deg) translateZ(calc(var(--case-d) / 2));
+}
+.jewel-hinge {
+  width: 9%;
   flex: none;
+  background:
+    repeating-linear-gradient(180deg, rgb(255 255 255 / 0.06) 0 2px, transparent 2px 6px),
+    linear-gradient(90deg, #18181c, #3b3b42 45%, #18181c);
+  box-shadow: inset -1px 0 rgb(255 255 255 / 0.18);
+}
+.jewel-cover {
+  flex: 1;
+  min-width: 0;
+}
+.jewel-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgb(255 255 255 / 0.3) 0%,
+    rgb(255 255 255 / 0.06) 28%,
+    transparent 42%,
+    rgb(255 255 255 / 0.08) 68%,
+    transparent 80%
+  );
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+.jewel-tray {
+  filter: saturate(0.5) brightness(0.75);
+}
+.jewel-spine,
+.jewel-edge-right {
+  top: 0;
+  left: calc(50% - var(--case-d) / 2);
+  width: var(--case-d);
+  height: 100%;
+}
+.jewel-spine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(90deg, #111, #2c2c32 50%, #111);
+  transform: rotateY(-90deg) translateZ(calc(var(--case-w) / 2));
+}
+.jewel-spine span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  font-size: calc(var(--case-d) * 0.55);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #e5e5e5;
+}
+.jewel-edge-right {
+  background: rgb(205 215 225 / 0.35);
+  transform: rotateY(90deg) translateZ(calc(var(--case-w) / 2));
+}
+.jewel-edge-top,
+.jewel-edge-bottom {
+  left: 0;
+  top: calc(50% - var(--case-d) / 2);
+  width: 100%;
+  height: var(--case-d);
+  background: rgb(205 215 225 / 0.3);
+}
+.jewel-edge-top {
+  transform: rotateX(90deg) translateZ(calc(var(--case-h) / 2));
+}
+.jewel-edge-bottom {
+  transform: rotateX(-90deg) translateZ(calc(var(--case-h) / 2));
+}
+
+/* The disc sits inside the case and slides up out of it when selected. */
+.jewel-disc {
+  position: absolute;
+  width: calc(var(--case-h) * 0.9);
+  height: calc(var(--case-h) * 0.9);
+  left: calc(50% + var(--case-w) * 0.045 - var(--case-h) * 0.45);
+  top: calc(50% - var(--case-h) * 0.45);
+  transition: transform 600ms 120ms cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+.jewel-case[data-open] .jewel-disc {
+  transform: translateY(-55%);
+}
+
+/* Generated cover art */
+.cover-art {
+  background:
+    radial-gradient(circle at 78% 22%, var(--cover-c) 0 9%, transparent 9.5%),
+    radial-gradient(circle at 78% 22%, transparent 0 14%, rgb(255 255 255 / 0.25) 14.5% 15%, transparent 15.5%),
+    radial-gradient(120% 90% at 0% 100%, var(--cover-b), transparent 70%),
+    linear-gradient(150deg, var(--cover-a), var(--cover-b));
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-ring,
+  .jewel-disc,
+  .jewel-face::after {
+    transition: none;
+  }
 }
 
 /* Data side: silver base, rainbow diffraction, faint grooves */
