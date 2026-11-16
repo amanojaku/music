@@ -23,8 +23,9 @@ const CLICK_SLOP_PX = 6;
 // back round a curve behind it and turns another STEP_ANGLE back towards the middle.
 /** Extra turn per case away from the selected one. */
 const STEP_ANGLE = 33; // degrees
-/** Distance between neighbouring case centres (1 = touching edge to edge). */
-const SPACING = 1.15;
+/** Distance between neighbouring case centres, in case widths. Under 1 so each case tucks
+ * slightly behind the one in front (the selected case overlaps its neighbours' inner edges). */
+const SPACING = 0.85;
 /** The scene is seen slightly from above. */
 const TILT = 8; // degrees
 /** Cases turned further than this are past the side of the view and hidden. */

@@ -20,6 +20,7 @@
 }
 
 body {
+  overflow-x: clip; /* full-bleed sections (100vw) mustn't add a horizontal scrollbar */
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
@@ -29,10 +30,12 @@ body {
 
 /* The camera. Case size drives everything. */
 .cd-carousel {
-  --case-w: 8.5rem;
+  --case-w: 12.75rem;
   --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
   --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
   height: calc(var(--case-h) * 2.3);
+  /* Bleed to the full window width so outer cases aren't cut off by the content column. */
+  margin-inline: calc(50% - 50vw);
   perspective: 1600px;
   perspective-origin: 50% 25%;
   overflow: clip;
@@ -44,7 +47,7 @@ body {
 }
 @media (min-width: 640px) {
   .cd-carousel {
-    --case-w: 12rem;
+    --case-w: 18rem;
   }
 }
 
