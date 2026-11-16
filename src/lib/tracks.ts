@@ -37,8 +37,3 @@ export async function getTrackBySlug(slug: string): Promise<Track | null> {
 export async function getTrackById(id: string): Promise<Track | null> {
   return allTracks().find((t) => t.id === id) ?? null;
 }
-
-export async function incrementDownloadCount(id: string): Promise<void> {
-  const track = allTracks().find((t) => t.id === id);
-  if (track) track.downloadCount += 1; // in-memory only; replace with a Supabase RPC
-}

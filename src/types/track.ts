@@ -24,5 +24,4 @@ export interface Track {
   notationPath: string | null;
   /** JSON sync points (bar → time in the recording) so the notation cursor follows the audio. */
   syncPath: string | null;
-  downloadCount: number;
 }

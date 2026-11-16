@@ -15,7 +15,6 @@ create table public.tracks (
   tuning text[] check (tuning is null or array_length(tuning, 1) = 6),  -- low → high, e.g. {E2,A2,E3,G3,B3,E4}; null = standard
   notation_path text,                -- MusicXML score in storage
   sync_path text,                    -- JSON sync points: [{barIndex, barPosition, barOccurence, millisecondOffset}]
-  download_count integer not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -23,9 +22,3 @@ alter table public.tracks enable row level security;
 
 create policy "Tracks are publicly readable"
   on public.tracks for select using (true);
-
--- Atomic counter, callable from the server with the service role key.
-create or replace function public.increment_download_count(track_id uuid)
-returns void language sql security definer as $$
-  update public.tracks set download_count = download_count + 1 where id = track_id;
-$$;

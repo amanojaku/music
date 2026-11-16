@@ -20,7 +20,6 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 12,
   },
   {
     id: "2",
@@ -38,7 +37,6 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 34,
   },
   {
     id: "3",
@@ -56,7 +54,6 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 7,
   },
   {
     id: "4",
@@ -74,7 +71,6 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 21,
   },
   {
     id: "5",
@@ -92,7 +88,6 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 15,
   },
   {
     id: "6",
@@ -110,6 +105,5 @@ export const mockTracks: Track[] = [
     tuning: null,
     notationPath: null,
     syncPath: null,
-    downloadCount: 9,
   },
 ];

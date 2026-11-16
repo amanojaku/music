@@ -43,14 +43,13 @@ export default async function TrackPage({ params }: Props) {
           </p>
           {track.description && <p className="mt-6">{track.description}</p>}
         </TrackPlayer>
-        <div className="mt-6 flex items-center gap-4">
+        <div className="mt-6">
           <a
             href={`/api/tracks/${track.id}/download`}
-            className="rounded-md bg-foreground px-4 py-2 text-background transition hover:opacity-80"
+            className="inline-block rounded-md bg-foreground px-4 py-2 text-background transition hover:opacity-80"
           >
             Download
           </a>
-          <span className="text-sm text-neutral-500">{track.downloadCount} downloads</span>
         </div>
         {track.notationPath && <Notation scorePath={track.notationPath} syncPath={track.syncPath} />}
         {musicKey && <KeyChords musicKey={musicKey} />}
