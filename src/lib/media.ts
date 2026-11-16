@@ -6,7 +6,7 @@
  * NEXT_PUBLIC_MEDIA_BASE_URL (the bucket's public r2.dev or custom-domain URL).
  */
 
-const BASE_URL = (process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "").replace(/\/+$/, "");
+const BASE_URL = (process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? "").trim().replace(/\/+$/, "");
 
 export const isBucketKey = (pathOrKey: string) => !pathOrKey.startsWith("/") && !/^https?:\/\//.test(pathOrKey);
 

@@ -6,6 +6,9 @@
  *   npm run media -- upload <slug> [--dry-run]
  *                                         upload a local track's files to tracks/<slug>/… and
  *                                         point its entry in src/data/local-tracks.json at them
+ *   npm run media -- replace <slug> <audio|download|notation|sync> <file>
+ *                                         overwrite one already-uploaded file, e.g. a score
+ *                                         re-exported from MuseScore
  *
  * Reads R2_BUCKET from .env.local. Downloads are uploaded with a Content-Disposition
  * naming them after the track, so the download route can simply redirect to them.
@@ -34,7 +37,11 @@ function bucket(): string {
 const wrangler = (...args: string[]) => execFileSync(WRANGLER, args, { stdio: "inherit" });
 
 /** Which track fields hold files, what to call them in the bucket, and how to serve them. */
-const FILES: Array<{ field: keyof Pick<Track, "audioPath" | "downloadPath" | "notationPath" | "syncPath">; name: (ext: string) => string; cache: string }> = [
+const FILES: Array<{
+  field: keyof Pick<Track, "audioPath" | "downloadPath" | "notationPath" | "syncPath">;
+  name: (ext: string) => string;
+  cache: string;
+}> = [
   { field: "audioPath", name: (ext) => `audio${ext}`, cache: "public, max-age=86400" },
   { field: "downloadPath", name: (ext) => `download${ext}`, cache: "public, max-age=86400" },
   // Notation may be re-uploaded after edits in MuseScore, so keep its cache short.
@@ -42,13 +49,60 @@ const FILES: Array<{ field: keyof Pick<Track, "audioPath" | "downloadPath" | "no
   { field: "syncPath", name: () => "sync.json", cache: "public, max-age=300" },
 ];
 
+const FIELD_BY_NAME = {
+  audio: "audioPath",
+  download: "downloadPath",
+  notation: "notationPath",
+  sync: "syncPath",
+} as const;
+
+function readTracks(): Track[] {
+  return JSON.parse(readFileSync(LOCAL_TRACKS, "utf8"));
+}
+
+/** Upload `file` to `key` with the right headers for `field`. */
+function put(track: Track, field: (typeof FILES)[number]["field"], file: string, key: string) {
+  const { cache } = FILES.find((f) => f.field === field)!;
+  const ext = path.extname(file).toLowerCase();
+  const args = [
+    "r2",
+    "object",
+    "put",
+    `${bucket()}/${key}`,
+    "--file",
+    file,
+    "--content-type",
+    CONTENT_TYPES[ext] ?? "application/octet-stream",
+    "--cache-control",
+    cache,
+    "--remote",
+  ];
+  if (field === "downloadPath") args.push("--content-disposition", downloadDisposition(track.title, ext));
+  wrangler(...args);
+}
+
+function replace(slug: string, name: string, file: string) {
+  const field = FIELD_BY_NAME[name as keyof typeof FIELD_BY_NAME];
+  if (!field) throw new Error(`Unknown file "${name}" (use audio, download, notation or sync)`);
+  const track = readTracks().find((t) => t.slug === slug);
+  if (!track) throw new Error(`No track "${slug}" in ${LOCAL_TRACKS}`);
+  const key = track[field];
+  if (!key || !isBucketKey(key)) throw new Error(`${slug}'s ${name} isn't in the bucket yet; run upload first`);
+  if (!existsSync(file)) throw new Error(`${file} not found`);
+  if (path.extname(file).toLowerCase() !== path.extname(key).toLowerCase()) {
+    throw new Error(`${file} doesn't match the uploaded file type (${path.extname(key)})`);
+  }
+  console.log(`${name}: ${file} → ${key}`);
+  put(track, field, file, key);
+}
+
 function upload(slug: string, dryRun: boolean) {
-  const tracks: Track[] = JSON.parse(readFileSync(LOCAL_TRACKS, "utf8"));
+  const tracks = readTracks();
   const track = tracks.find((t) => t.slug === slug);
   if (!track) throw new Error(`No track "${slug}" in ${LOCAL_TRACKS}`);
 
   let changed = 0;
-  for (const { field, name, cache } of FILES) {
+  for (const { field, name } of FILES) {
     const current = track[field];
     if (!current || isBucketKey(current)) continue; // nothing to upload, or already in the bucket
     const file = path.join(process.cwd(), "public", current);
@@ -56,23 +110,8 @@ function upload(slug: string, dryRun: boolean) {
 
     const ext = path.extname(file).toLowerCase();
     const key = `tracks/${slug}/${name(ext)}`;
-    const args = [
-      "r2",
-      "object",
-      "put",
-      `${bucket()}/${key}`,
-      "--file",
-      file,
-      "--content-type",
-      CONTENT_TYPES[ext] ?? "application/octet-stream",
-      "--cache-control",
-      cache,
-      "--remote",
-    ];
-    if (field === "downloadPath") args.push("--content-disposition", downloadDisposition(track.title, ext));
-
     console.log(`${field}: ${current} → ${key}`);
-    if (!dryRun) wrangler(...args);
+    if (!dryRun) put(track, field, file, key);
     track[field] = key;
     changed++;
   }
@@ -84,10 +123,13 @@ function upload(slug: string, dryRun: boolean) {
 }
 
 function main() {
-  const [command, slug] = process.argv.slice(2);
+  const [command, slug, name, file] = process.argv.slice(2);
   if (command === "cors") return wrangler("r2", "bucket", "cors", "set", bucket(), "--file", "r2-cors.json");
   if (command === "upload" && slug) return upload(slug, process.argv.includes("--dry-run"));
-  console.error("Usage: npm run media -- cors | upload <slug> [--dry-run]");
+  if (command === "replace" && slug && name && file) return replace(slug, name, file);
+  console.error(
+    "Usage: npm run media -- cors | upload <slug> [--dry-run] | replace <slug> <audio|download|notation|sync> <file>",
+  );
   process.exit(1);
 }
 
