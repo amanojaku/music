@@ -20,7 +20,7 @@ const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
 
 // Layout, in case widths. The selected case faces you; each case further out turns another
-// STEP_ANGLE towards the middle, so the row curves forward round the viewer like a curved wall.
+// STEP_ANGLE and sits further back, so the row curves away behind the selected case.
 /** Extra turn per case away from the selected one. */
 const STEP_ANGLE = 33; // degrees
 /** Distance between neighbouring case centres (1 = touching edge to edge). */
@@ -33,13 +33,13 @@ const MAX_VISIBLE_ANGLE = 110; // degrees
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-/** Radius of the curve the cases sit on (its centre is in front of the selected case). */
+/** Radius of the curve the cases sit on (its centre is behind the selected case). */
 const CURVE_RADIUS = SPACING / (2 * Math.sin(rad(STEP_ANGLE / 2)));
 
 /**
  * Pose for a case `offset` steps from the selected one (fractional while
- * sliding; wraps round). Each step out turns the case STEP_ANGLE further
- * towards the middle and moves it along the curve.
+ * sliding; wraps round). Each step out moves the case further round the
+ * curve behind the selected one and turns it another STEP_ANGLE with it.
  */
 function layout(offset: number, count: number) {
   const rel = mod(offset + count / 2, count) - count / 2; // −n/2 … n/2
@@ -48,16 +48,16 @@ function layout(offset: number, count: number) {
     rel,
     selectedness: Math.max(0, 1 - Math.abs(rel)),
     x: CURVE_RADIUS * Math.sin(rad(theta)),
-    z: CURVE_RADIUS * (1 - Math.cos(rad(theta))),
-    angle: -theta,
+    z: -CURVE_RADIUS * (1 - Math.cos(rad(theta))),
+    angle: theta,
     hidden: Math.abs(theta) > MAX_VISIBLE_ANGLE,
   };
 }
 
 /**
  * Home-page browser: the selected CD jewel case faces you, disc lifted out;
- * the cases either side are turned 33° towards it, the next ones 66°, and so
- * on, curving forward round the viewer. Slide by
+ * the others curve away behind it, the cases either side turned 33°, the next
+ * ones 66°, and so on. Slide by
  * dragging (cases follow your finger), horizontal wheel, arrow keys, the
  * buttons, or by clicking a case. Clicking the selected case plays or pauses it.
  */
@@ -189,9 +189,9 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
 
   const turn = position + (drag ?? 0);
 
-  // A case wrapping from one end of the curve to the other would sweep across the front
-  // of the view. Before the browser paints, switch its transition off so it jumps instead
-  // (it's out at the edge when it does), then switch it back on.
+  // A case wrapping from one end of the curve to the other would sweep across the view.
+  // Before the browser paints, switch its transition off so it jumps instead (it's hidden
+  // round the back when it does), then switch it back on.
   useLayoutEffect(() => {
     itemRefs.current.forEach((el, i) => {
       const { rel } = layout(i - turn, n);

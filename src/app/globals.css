@@ -25,14 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- CD carousel: selected case facing you, the rest curving forward at 33° steps ---------- */
+/* ---------- CD carousel: selected case facing you, the rest curving away behind it at 33° steps ---------- */
 
 /* The camera. Case size drives everything. */
 .cd-carousel {
   --case-w: 8.5rem;
   --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
   --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
-  height: calc(var(--case-h) * 2.7);
+  height: calc(var(--case-h) * 2.3);
   perspective: 1600px;
   perspective-origin: 50% 25%;
   overflow: clip;
@@ -64,7 +64,7 @@ body {
 .cd-item {
   position: absolute;
   left: 50%;
-  top: 54%;
+  top: 60%;
   width: var(--case-w);
   height: var(--case-h);
   margin-left: calc(var(--case-w) / -2);
