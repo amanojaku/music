@@ -12,7 +12,8 @@
     "predev": "tsx scripts/generate-sample-audio.ts --if-missing && node scripts/copy-alphatab-assets.mjs",
     "transcribe": "tsx scripts/transcribe.ts",
     "prebuild": "node scripts/copy-alphatab-assets.mjs",
-    "musescore": "tsx scripts/to-musescore.ts"
+    "musescore": "tsx scripts/to-musescore.ts",
+    "media": "tsx scripts/media.ts"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.8.4",
@@ -34,7 +35,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "wrangler": "^4.163.0"
   },
   "engines": {
     "node": ">=22.12.0"

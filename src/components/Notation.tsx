@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { AlphaTabApi } from "@coderline/alphatab";
 import { usePlayer } from "@/components/PlayerContext";
+import { mediaUrl } from "@/lib/media";
 
 type View = "score" | "tab" | "both";
 
@@ -55,11 +56,11 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
     (async () => {
       const alphaTab = await import("@coderline/alphatab");
       const [scoreData, syncPoints] = await Promise.all([
-        fetch(scorePath).then((r) => {
+        fetch(mediaUrl(scorePath)).then((r) => {
           if (!r.ok) throw new Error(`Score not found (${r.status})`);
           return r.text();
         }),
-        syncPath ? fetch(syncPath).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
+        syncPath ? fetch(mediaUrl(syncPath)).then((r) => (r.ok ? r.json() : null)) : Promise.resolve(null),
       ]);
       if (cancelled) return;
 

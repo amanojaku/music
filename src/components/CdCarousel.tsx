@@ -13,6 +13,7 @@ import {
 import type { Track } from "@/types/track";
 import { JewelCase } from "@/components/JewelCase";
 import { formatDate, formatDuration } from "@/lib/format";
+import { mediaUrl } from "@/lib/media";
 
 /** Pixels of horizontal drag that move one case. */
 const DRAG_PX_PER_STEP = 180;
@@ -124,7 +125,7 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
       else audio.pause();
       return;
     }
-    audio.src = track.audioPath;
+    audio.src = mediaUrl(track.audioPath);
     setPlayingId(track.id);
     void audio.play();
   }

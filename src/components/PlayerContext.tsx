@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { Track } from "@/types/track";
 import { AudioAnalysis } from "@/lib/visuals/analysis";
+import { mediaUrl } from "@/lib/media";
 
 interface PlayerValue {
   track: Track;
@@ -78,7 +79,7 @@ export function PlayerProvider({ track, children }: { track: Track; children: Re
     <PlayerContext.Provider
       value={{ track, audioRef, analysisRef, isPlaying, hasStarted, currentTime, duration, toggle, seek }}
     >
-      <audio ref={audioRef} src={track.audioPath} preload="metadata" crossOrigin="anonymous" />
+      <audio ref={audioRef} src={mediaUrl(track.audioPath)} preload="metadata" crossOrigin="anonymous" />
       {children}
     </PlayerContext.Provider>
   );
