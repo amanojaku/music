@@ -53,10 +53,36 @@ type Status = "loading" | "ready" | "error";
  * Add the count where a staff lists tunings but no line count.
  */
 function prepareMusicXml(xml: string): string {
-  return xml.replace(/<staff-details([^>]*)>([\s\S]*?)<\/staff-details>/g, (match, attrs: string, body: string) => {
-    const strings = body.match(/<staff-tuning\b/g)?.length ?? 0;
-    if (!strings || body.includes("<staff-lines>")) return match;
-    return `<staff-details${attrs}><staff-lines>${strings}</staff-lines>${body}</staff-details>`;
+  const withLines = xml.replace(
+    /<staff-details([^>]*)>([\s\S]*?)<\/staff-details>/g,
+    (match, attrs: string, body: string) => {
+      const strings = body.match(/<staff-tuning\b/g)?.length ?? 0;
+      if (!strings || body.includes("<staff-lines>")) return match;
+      return `<staff-details${attrs}><staff-lines>${strings}</staff-lines>${body}</staff-details>`;
+    },
+  );
+  return renumberVoicesPerStaff(withLines);
+}
+
+/**
+ * MuseScore numbers voices across the whole instrument (staff 1 uses voices 1–4,
+ * staff 2 uses 5–8). alphaTab numbers them per staff, so a tab staff whose notes
+ * are all "voice 5" gets four empty voices in front, drawn as a rest at the start
+ * of every bar. Renumber each staff's voices to start from 1.
+ */
+function renumberVoicesPerStaff(xml: string): string {
+  const ELEMENT = /<(note|forward)\b[^>]*>[\s\S]*?<\/\1>/g;
+  const lowest = new Map<string, number>();
+  for (const [el] of xml.matchAll(ELEMENT)) {
+    const staff = /<staff>(\d+)<\/staff>/.exec(el)?.[1];
+    const voice = Number(/<voice>(\d+)<\/voice>/.exec(el)?.[1]);
+    if (staff && voice) lowest.set(staff, Math.min(lowest.get(staff) ?? voice, voice));
+  }
+  if ([...lowest.values()].every((v) => v === 1)) return xml;
+  return xml.replace(ELEMENT, (el) => {
+    const staff = /<staff>(\d+)<\/staff>/.exec(el)?.[1];
+    const shift = staff ? (lowest.get(staff) ?? 1) - 1 : 0;
+    return shift ? el.replace(/<voice>(\d+)<\/voice>/, (_, v: string) => `<voice>${Number(v) - shift}</voice>`) : el;
   });
 }
 
