@@ -80,6 +80,10 @@ body {
     rotateY(var(--angle)) rotateX(calc(var(--s) * var(--tilt)));
   transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
   cursor: inherit;
+  -webkit-user-drag: none; /* the cases are links: don't let the browser start a link drag */
+}
+.cd-item[aria-current] {
+  cursor: pointer;
 }
 .cd-item[data-hidden] {
   visibility: hidden;

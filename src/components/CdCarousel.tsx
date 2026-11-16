@@ -9,7 +9,6 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
-  type WheelEvent,
 } from "react";
 import type { Track } from "@/types/track";
 import { JewelCase } from "@/components/JewelCase";
@@ -76,7 +75,7 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const dragStart = useRef<{ x: number; pointer: number } | null>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
   // Each case's previous offset, to spot cases wrapping round from one end to the other.
   const lastRel = useRef<number[]>([]);
   // Latest drag amount, read on release (state may not have re-rendered after the last move).
@@ -164,17 +163,29 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
     if (suppressClick.current) setTimeout(() => (suppressClick.current = false), 0);
   }
 
-  function onWheel(e: WheelEvent) {
-    // Only horizontal gestures move the row; vertical scrolling scrolls the page.
-    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-    wheelAccum.current += e.deltaX;
-    const now = performance.now();
-    if (Math.abs(wheelAccum.current) > 40 && now > wheelLock.current) {
-      step(Math.sign(wheelAccum.current));
-      wheelAccum.current = 0;
-      wheelLock.current = now + 320;
-    }
-  }
+  // Mouse wheel (either direction) and trackpad swipes turn the carousel while the pointer is
+  // over it. Attached natively because React's wheel listener is passive and can't stop the
+  // page scrolling at the same time.
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const onWheel = (e: globalThis.WheelEvent) => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!delta) return;
+      e.preventDefault();
+      wheelAccum.current += delta;
+      const now = performance.now();
+      if (Math.abs(wheelAccum.current) > 40 && now > wheelLock.current) {
+        // Capture the direction now: React may run the updater after the reset below.
+        const direction = Math.sign(wheelAccum.current);
+        setPosition((p) => p + direction);
+        wheelAccum.current = 0;
+        wheelLock.current = now + 320;
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   function onKeyDown(e: KeyboardEvent) {
     const moves: Record<string, () => void> = {
@@ -221,7 +232,6 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        onWheel={onWheel}
         onKeyDown={onKeyDown}
       >
         <div
@@ -240,29 +250,34 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
               "--dim": Math.min(0.7, Math.max(0, Math.abs(rel) - 0.3) * 0.22),
             } as CSSProperties;
             return (
-              <button
+              <Link
                 key={track.id}
-                type="button"
+                href={`/tracks/${track.slug}`}
                 className="cd-item"
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
+                draggable={false}
                 data-hidden={hidden || undefined}
                 tabIndex={hidden ? -1 : undefined}
                 style={style}
-                onClick={() => {
-                  if (suppressClick.current) return;
-                  if (isActive) togglePlay(track);
-                  else goTo(i);
+                // The front case opens its track page; a side case is brought to the front first.
+                // Modified clicks (new tab/window) always follow the link.
+                onClick={(e) => {
+                  if (suppressClick.current) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  if (!isActive) {
+                    e.preventDefault();
+                    goTo(i);
+                  }
                 }}
                 // Tabbing to a case selects it; a mouse press (which also focuses) must not,
                 // or every drag would start by jumping to the case under the pointer.
                 onFocus={(e) => !isActive && e.currentTarget.matches(":focus-visible") && goTo(i)}
-                aria-label={
-                  isActive
-                    ? `${playingId === track.id && isPlaying ? "Pause" : "Play"} ${track.title}`
-                    : `Show ${track.title}`
-                }
+                aria-label={isActive ? `Open ${track.title}` : `Show ${track.title}`}
                 aria-current={isActive ? "true" : undefined}
               >
                 <JewelCase
@@ -271,7 +286,7 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
                   spinning={playingId === track.id}
                   paused={!isPlaying}
                 />
-              </button>
+              </Link>
             );
           })}
         </div>
