@@ -163,17 +163,16 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
     if (suppressClick.current) setTimeout(() => (suppressClick.current = false), 0);
   }
 
-  // Mouse wheel (either direction) and trackpad swipes turn the carousel while the pointer is
-  // over it. Attached natively because React's wheel listener is passive and can't stop the
-  // page scrolling at the same time.
+  // Horizontal scrolling only (trackpad swipes, Shift+wheel, tilt wheels) turns the carousel.
+  // Vertical scrolling is left alone so it always scrolls the page. Attached natively because
+  // React's wheel listener is passive and can't stop the browser's own horizontal handling.
   useEffect(() => {
     const el = rowRef.current;
     if (!el) return;
     const onWheel = (e: globalThis.WheelEvent) => {
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (!delta) return;
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // mostly vertical: let the page scroll
       e.preventDefault();
-      wheelAccum.current += delta;
+      wheelAccum.current += e.deltaX;
       const now = performance.now();
       if (Math.abs(wheelAccum.current) > 40 && now > wheelLock.current) {
         // Capture the direction now: React may run the updater after the reset below.
