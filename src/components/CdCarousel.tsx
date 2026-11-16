@@ -18,67 +18,65 @@ import { formatDate, formatDuration } from "@/lib/format";
 const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
 
-// Layout, in case widths, around a centre point C just behind the selected case.
-/** Half the arc the other cases sit on, from the back of C to each end. */
-const ARC_HALF = 65; // degrees
-/** Minimum space between neighbouring cases along the arc. */
-const ARC_SPACING = 1.25;
-/** The scene is pushed back by this fraction of the arc radius so the whole arc fits in view… */
-const SCENE_DEPTH = 0.55;
-/** …and the selected case stands this far in front of the camera plane, so it reads at full size. */
-const FRONT_LIFT = 0.15;
-/** The scene is seen slightly from above. */
-const TILT = 10; // degrees
+// Layout, in case widths. The selected case stands at the centre C facing you; the others
+// fan round it on a semicircle like spokes, each with its spine (hinge edge) towards C.
+/** Distance from C to each fanned case's spine (a little over half a case, so neighbours clear the selected one). */
+const SPINE_RADIUS = 0.62;
+/** The scene is seen slightly from above, which also shows the fan's shape. */
+const TILT = 22; // degrees
 
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-/** Arc radius so the n−1 other cases keep ARC_SPACING apart (within sensible bounds). */
-const arcRadius = (count: number) =>
-  Math.min(3.4, Math.max(1.8, (ARC_SPACING * Math.max(count - 2, 1)) / rad(2 * ARC_HALF)));
+/**
+ * Where a case's spine sits (sx, sz) and which way the case points from it
+ * (angle, a rotateY about the spine: 0 = flat, reaching right, front facing
+ * you; 180 = flat, reaching left, back facing you).
+ */
+type Pose = { sx: number; sz: number; angle: number };
 
-type Pose = { x: number; z: number; angle: number };
-
-/** A case on the arc at `theta` degrees from the back of C (− left, + right), turned to face C. */
-const onArc = (theta: number, radius: number): Pose => ({
-  x: radius * Math.sin(rad(theta)),
-  z: -radius * Math.cos(rad(theta)),
-  angle: -theta,
+/** On the fan at `theta` degrees from straight behind C (−90 left … +90 right): pointing away from C. */
+const onFan = (theta: number): Pose => ({
+  sx: SPINE_RADIUS * Math.sin(rad(theta)),
+  sz: -SPINE_RADIUS * Math.cos(rad(theta)),
+  angle: 90 - theta,
 });
+
+/** The selected case: centred on C, facing you. */
+const SELECTED: Pose = { sx: -0.5, sz: 0, angle: 0 };
 
 /**
  * Pose for a case `offset` steps from the selected one (fractional while
- * sliding; wraps round). Nearest neighbours sit at the ends of the arc beside
- * the selected case; the furthest meet at the back, so wrapping happens there
- * without any jump. Within one step of the front, cases glide between the
- * front spot and the end of the arc.
+ * sliding; wraps round). Nearest neighbours lie flat either side of the
+ * selected case; the furthest meet straight behind it, so wrapping happens
+ * there without a jump. Within one step of the centre a case glides (right)
+ * or turns over like a page (left) between the centre and the end of the fan.
  */
-function layout(offset: number, count: number, radius: number) {
+function layout(offset: number, count: number) {
   const rel = mod(offset + count / 2, count) - count / 2; // −n/2 … n/2
   const a = Math.abs(rel);
   const side = rel < 0 ? -1 : 1;
   const selectedness = Math.max(0, 1 - a);
-  const far = Math.max(1, count / 2 - 1); // steps from an arc end to the back
-  const arcEnd = onArc(side * ARC_HALF, radius);
+  const far = Math.max(1, count / 2 - 1); // steps from a fan end round to the back
 
   let pose: Pose;
   if (a >= 1) {
-    pose = onArc(side * ARC_HALF * (1 - Math.min(1, (a - 1) / far)), radius);
+    pose = onFan(side * 90 * (1 - Math.min(1, (a - 1) / far)));
   } else {
-    const front: Pose = { x: 0, z: radius * SCENE_DEPTH + FRONT_LIFT, angle: 0 };
+    const end = onFan(side * 90);
     pose = {
-      x: front.x + (arcEnd.x - front.x) * a,
-      z: front.z + (arcEnd.z - front.z) * a,
-      angle: front.angle + (arcEnd.angle - front.angle) * a,
+      sx: SELECTED.sx + (end.sx - SELECTED.sx) * a,
+      sz: SELECTED.sz + (end.sz - SELECTED.sz) * a,
+      angle: SELECTED.angle + (end.angle - SELECTED.angle) * a,
     };
   }
   return { rel, selectedness, ...pose };
 }
 
 /**
- * Home-page browser: the selected CD jewel case stands at the front facing
- * you, disc lifted out; the others stand on a semicircle behind it, each
- * turned towards a centre point just behind the selected case. Slide by
+ * Home-page browser: the selected CD jewel case stands at the centre facing
+ * you, disc lifted out; the others fan round it on a semicircle like spokes,
+ * each with its spine pointing at the centre. Slide by
  * dragging (cases follow your finger), horizontal wheel, arrow keys, the
  * buttons, or by clicking a case. Clicking the selected case plays or pauses it.
  */
@@ -210,7 +208,6 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const active = tracks[selected];
   const activeIsPlaying = playingId === active.id && isPlaying;
   const turn = position + (drag ?? 0);
-  const radius = arcRadius(n);
 
   return (
     <section aria-label="Tracks" aria-roledescription="carousel">
@@ -229,14 +226,14 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
         <div
           className="cd-ring"
           data-dragging={drag !== null || undefined}
-          style={{ "--tilt": `${TILT}deg`, "--depth": radius * SCENE_DEPTH } as CSSProperties}
+          style={{ "--tilt": `${TILT}deg` } as CSSProperties}
         >
           {tracks.map((track, i) => {
             const isActive = i === selected;
-            const { rel, selectedness, x, z, angle } = layout(i - turn, n, radius);
+            const { rel, selectedness, sx, sz, angle } = layout(i - turn, n);
             const style = {
-              "--x": x,
-              "--z": z,
+              "--sx": sx,
+              "--sz": sz,
               "--angle": `${angle}deg`,
               "--s": selectedness,
               "--dim": Math.min(0.7, Math.max(0, Math.abs(rel) - 0.3) * 0.22),
