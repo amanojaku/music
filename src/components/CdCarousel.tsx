@@ -19,8 +19,8 @@ import { formatDate, formatDuration } from "@/lib/format";
 const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
 
-// Layout, in case widths. The selected case faces you; each case further out turns another
-// STEP_ANGLE and sits further back, so the row curves away behind the selected case.
+// Layout, in case widths. The selected case faces you; each case further out sits further
+// back round a curve behind it and turns another STEP_ANGLE back towards the middle.
 /** Extra turn per case away from the selected one. */
 const STEP_ANGLE = 33; // degrees
 /** Distance between neighbouring case centres (1 = touching edge to edge). */
@@ -39,7 +39,8 @@ const CURVE_RADIUS = SPACING / (2 * Math.sin(rad(STEP_ANGLE / 2)));
 /**
  * Pose for a case `offset` steps from the selected one (fractional while
  * sliding; wraps round). Each step out moves the case further round the
- * curve behind the selected one and turns it another STEP_ANGLE with it.
+ * curve behind the selected one and turns it another STEP_ANGLE back
+ * towards the middle, so its cover stays towards the viewer.
  */
 function layout(offset: number, count: number) {
   const rel = mod(offset + count / 2, count) - count / 2; // −n/2 … n/2
@@ -49,15 +50,15 @@ function layout(offset: number, count: number) {
     selectedness: Math.max(0, 1 - Math.abs(rel)),
     x: CURVE_RADIUS * Math.sin(rad(theta)),
     z: -CURVE_RADIUS * (1 - Math.cos(rad(theta))),
-    angle: theta,
+    angle: -theta,
     hidden: Math.abs(theta) > MAX_VISIBLE_ANGLE,
   };
 }
 
 /**
  * Home-page browser: the selected CD jewel case faces you, disc lifted out;
- * the others curve away behind it, the cases either side turned 33°, the next
- * ones 66°, and so on. Slide by
+ * the others curve away behind it, the cases either side turned 33° back
+ * towards it, the next ones 66°, and so on. Slide by
  * dragging (cases follow your finger), horizontal wheel, arrow keys, the
  * buttons, or by clicking a case. Clicking the selected case plays or pauses it.
  */
