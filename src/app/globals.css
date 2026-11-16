@@ -25,14 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- CD carousel: selected case out in front of a 3D circle ---------- */
+/* ---------- CD carousel: selected case in front, the rest on a semicircle behind ---------- */
 
 /* The camera. Case size drives everything. */
 .cd-carousel {
   --case-w: 8.5rem;
   --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
   --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
-  height: calc(var(--case-h) * 2.75);
+  height: calc(var(--case-h) * 2.3);
   perspective: 1600px;
   perspective-origin: 50% 25%;
   overflow: clip;
@@ -48,29 +48,23 @@ body {
   }
 }
 
-/*
- * The circle: pushed back by its radius so the ring's front sits at normal
- * size, tilted to be seen from slightly above, and turned by --turn steps.
- * --radius and --pull are in case widths.
- */
+/* The scene, tilted to be seen from slightly above and pushed back by --depth (case widths) to fit. */
 .cd-ring {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(calc(-1 * var(--tilt))) translateZ(calc(-1 * var(--radius) * var(--case-w)))
-    rotateY(calc(var(--turn) * -360deg / var(--n)));
-  transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
+  transform: rotateX(calc(-1 * var(--tilt))) translateZ(calc(-1 * var(--depth) * var(--case-w)));
 }
 .cd-ring[data-dragging],
 .cd-ring[data-dragging] .cd-item {
   transition: none;
 }
 
-/* Each case has a fixed slot on the circle; --s (0–1) brings it forward and upright to face you. */
+/* --x / --z (case widths) and --angle place a case; --s (0–1) stands the selected one upright to face you. */
 .cd-item {
   position: absolute;
   left: 50%;
-  top: 55%;
+  top: 63%;
   width: var(--case-w);
   height: var(--case-h);
   margin-left: calc(var(--case-w) / -2);
@@ -79,8 +73,8 @@ body {
   border: 0;
   background: none;
   transform-style: preserve-3d;
-  transform: rotateY(calc(var(--i) * 360deg / var(--n)))
-    translateZ(calc((var(--radius) + var(--s) * var(--pull)) * var(--case-w))) rotateX(calc(var(--s) * var(--tilt)));
+  transform: translateX(calc(var(--x) * var(--case-w))) translateZ(calc(var(--z) * var(--case-w)))
+    rotateY(var(--angle)) rotateX(calc(var(--s) * var(--tilt)));
   transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
   cursor: inherit;
 }

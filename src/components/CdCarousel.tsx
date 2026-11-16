@@ -18,35 +18,69 @@ import { formatDate, formatDuration } from "@/lib/format";
 const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
 
-/** Space between neighbouring cases round the circle, in case widths. */
-const RING_SPACING = 1.3;
-/** How far the selected case comes forward out of the circle, in case widths. */
-const PULL_OUT = 0.9;
-/** The circle is seen slightly from above. */
+// Layout, in case widths, around a centre point C just behind the selected case.
+/** Half the arc the other cases sit on, from the back of C to each end. */
+const ARC_HALF = 65; // degrees
+/** Minimum space between neighbouring cases along the arc. */
+const ARC_SPACING = 1.25;
+/** The scene is pushed back by this fraction of the arc radius so the whole arc fits in view… */
+const SCENE_DEPTH = 0.55;
+/** …and the selected case stands this far in front of the camera plane, so it reads at full size. */
+const FRONT_LIFT = 0.15;
+/** The scene is seen slightly from above. */
 const TILT = 10; // degrees
 
 const mod = (n: number, m: number) => ((n % m) + m) % m;
+const rad = (deg: number) => (deg * Math.PI) / 180;
 
-/** Ring radius (case widths) so neighbouring cases have RING_SPACING between centres. */
-const ringRadius = (count: number) => RING_SPACING / 2 / Math.sin(Math.PI / Math.max(count, 3));
+/** Arc radius so the n−1 other cases keep ARC_SPACING apart (within sensible bounds). */
+const arcRadius = (count: number) =>
+  Math.min(3.4, Math.max(1.8, (ARC_SPACING * Math.max(count - 2, 1)) / rad(2 * ARC_HALF)));
+
+type Pose = { x: number; z: number; angle: number };
+
+/** A case on the arc at `theta` degrees from the back of C (− left, + right), turned to face C. */
+const onArc = (theta: number, radius: number): Pose => ({
+  x: radius * Math.sin(rad(theta)),
+  z: -radius * Math.cos(rad(theta)),
+  angle: -theta,
+});
 
 /**
- * A case's offset from the selected position, wrapped round the circle
- * (−n/2 … n/2; fractional while sliding), and how "selected" it is: 1 at the
- * front, fading to 0 one step away. The ring itself rotates by the unwrapped
- * position, so cases never sweep the long way round when offsets wrap.
+ * Pose for a case `offset` steps from the selected one (fractional while
+ * sliding; wraps round). Nearest neighbours sit at the ends of the arc beside
+ * the selected case; the furthest meet at the back, so wrapping happens there
+ * without any jump. Within one step of the front, cases glide between the
+ * front spot and the end of the arc.
  */
-function layout(offset: number, count: number) {
-  const rel = mod(offset + count / 2, count) - count / 2;
-  return { rel, selectedness: Math.max(0, 1 - Math.abs(rel)) };
+function layout(offset: number, count: number, radius: number) {
+  const rel = mod(offset + count / 2, count) - count / 2; // −n/2 … n/2
+  const a = Math.abs(rel);
+  const side = rel < 0 ? -1 : 1;
+  const selectedness = Math.max(0, 1 - a);
+  const far = Math.max(1, count / 2 - 1); // steps from an arc end to the back
+  const arcEnd = onArc(side * ARC_HALF, radius);
+
+  let pose: Pose;
+  if (a >= 1) {
+    pose = onArc(side * ARC_HALF * (1 - Math.min(1, (a - 1) / far)), radius);
+  } else {
+    const front: Pose = { x: 0, z: radius * SCENE_DEPTH + FRONT_LIFT, angle: 0 };
+    pose = {
+      x: front.x + (arcEnd.x - front.x) * a,
+      z: front.z + (arcEnd.z - front.z) * a,
+      angle: front.angle + (arcEnd.angle - front.angle) * a,
+    };
+  }
+  return { rel, selectedness, ...pose };
 }
 
 /**
- * Home-page browser: CD jewel cases on a 3D circle. The selected case comes
- * forward out of the circle to face you, with its disc lifted out; the rest
- * stay spaced round the ring behind it. Turn the circle by dragging (it
- * follows your finger), horizontal wheel, arrow keys, the buttons, or by
- * clicking a case. Clicking the selected case plays or pauses it.
+ * Home-page browser: the selected CD jewel case stands at the front facing
+ * you, disc lifted out; the others stand on a semicircle behind it, each
+ * turned towards a centre point just behind the selected case. Slide by
+ * dragging (cases follow your finger), horizontal wheel, arrow keys, the
+ * buttons, or by clicking a case. Clicking the selected case plays or pauses it.
  */
 export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const n = tracks.length;
@@ -176,6 +210,7 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const active = tracks[selected];
   const activeIsPlaying = playingId === active.id && isPlaying;
   const turn = position + (drag ?? 0);
+  const radius = arcRadius(n);
 
   return (
     <section aria-label="Tracks" aria-roledescription="carousel">
@@ -194,21 +229,15 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
         <div
           className="cd-ring"
           data-dragging={drag !== null || undefined}
-          style={
-            {
-              "--n": Math.max(n, 3),
-              "--turn": turn,
-              "--radius": ringRadius(n),
-              "--pull": PULL_OUT,
-              "--tilt": `${TILT}deg`,
-            } as CSSProperties
-          }
+          style={{ "--tilt": `${TILT}deg`, "--depth": radius * SCENE_DEPTH } as CSSProperties}
         >
           {tracks.map((track, i) => {
             const isActive = i === selected;
-            const { rel, selectedness } = layout(i - turn, n);
+            const { rel, selectedness, x, z, angle } = layout(i - turn, n, radius);
             const style = {
-              "--i": i,
+              "--x": x,
+              "--z": z,
+              "--angle": `${angle}deg`,
               "--s": selectedness,
               "--dim": Math.min(0.7, Math.max(0, Math.abs(rel) - 0.3) * 0.22),
             } as CSSProperties;
