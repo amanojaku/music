@@ -13,8 +13,37 @@ const VIEWS: Array<{ id: View; label: string }> = [
   { id: "both", label: "Both" },
 ];
 
-/** alphaTab StaveProfile values (avoids importing the library on the server). */
-const STAVE_PROFILE: Record<View, number> = { both: 1, score: 2, tab: 3 };
+/** alphaTab StaveProfile.Default: each staff's own showStandardNotation/showTablature decide. */
+const STAVE_PROFILE_DEFAULT = 0;
+
+type ScoreModel = {
+  tracks: Array<{
+    staves: Array<{
+      tuning: number[];
+      showStandardNotation: boolean;
+      showTablature: boolean;
+      standardNotationLineCount: number;
+    }>;
+  }>;
+};
+
+/**
+ * Show notation, tab or both. Works for both score layouts we get:
+ *  - one guitar staff carrying the tuning (our transcription draft): it shows either or both;
+ *  - a notation staff plus a linked tab staff (MuseScore's export): each shows its own part.
+ */
+function applyView(score: ScoreModel, view: View) {
+  for (const track of score.tracks) {
+    const withTuning = track.staves.filter((s) => s.tuning.length).length;
+    const separateTab = withTuning > 0 && withTuning < track.staves.length;
+    for (const staff of track.staves) {
+      const isTab = staff.tuning.length > 0;
+      if (isTab) staff.standardNotationLineCount = 5;
+      staff.showStandardNotation = view !== "tab" && (!separateTab || !isTab);
+      staff.showTablature = view !== "score" && isTab;
+    }
+  }
+}
 
 type Status = "loading" | "ready" | "error";
 
@@ -41,6 +70,7 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
   const [view, setView] = useState<View>("both");
+  const viewRef = useRef<View>("both");
   const [status, setStatus] = useState<Status>("loading");
 
   // Create alphaTab, load the score, and drive its cursor from the <audio> element.
@@ -66,7 +96,7 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
 
       api = new alphaTab.AlphaTabApi(container, {
         core: { fontDirectory: "/alphatab/font/", useWorkers: false },
-        display: { staveProfile: STAVE_PROFILE[view] },
+        display: { staveProfile: STAVE_PROFILE_DEFAULT },
         player: {
           playerMode: alphaTab.PlayerMode.EnabledExternalMedia,
           enableCursor: true,
@@ -76,19 +106,15 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
         },
       });
       apiRef.current = api;
+      // Diagnostics: with ?debug-visuals, expose the bar the cursor is on as window.__notationBar.
+      if (new URLSearchParams(window.location.search).has("debug-visuals")) {
+        api.playedBeatChanged.on((beat) => {
+          (window as unknown as { __notationBar?: number }).__notationBar = beat.voice.bar.index;
+        });
+      }
 
       api.scoreLoaded.on((score) => {
-        // Guitar staves carry the tuning; keep their standard-notation staff at five lines
-        // (the stave profile decides whether notation, tab or both are shown).
-        for (const track of score.tracks) {
-          for (const staff of track.staves) {
-            if (staff.tuning.length) {
-              staff.standardNotationLineCount = 5;
-              staff.showStandardNotation = true;
-              staff.showTablature = true;
-            }
-          }
-        }
+        applyView(score, viewRef.current);
         if (syncPoints) score.applyFlatSyncPoints(syncPoints);
       });
       api.renderFinished.on(() => setStatus("ready"));
@@ -162,16 +188,15 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
       api?.destroy();
       apiRef.current = null;
     };
-    // The view is applied separately below without reloading.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The view is applied separately (changeView) without reloading.
   }, [scorePath, syncPath, audioRef]);
 
   function changeView(next: View) {
     setView(next);
+    viewRef.current = next;
     const api = apiRef.current;
-    if (!api) return;
-    api.settings.display.staveProfile = STAVE_PROFILE[next];
-    api.updateSettings();
+    if (!api?.score) return;
+    applyView(api.score, next);
     api.render();
   }
 
