@@ -68,6 +68,8 @@ function prepareMusicXml(xml: string): string {
 export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath: string | null }) {
   const { audioRef } = usePlayer();
   const containerRef = useRef<HTMLDivElement>(null);
+  // The score scrolls inside its own box, so following the music never moves the page.
+  const viewportRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
   const [view, setView] = useState<View>("both");
   const viewRef = useRef<View>("both");
@@ -76,8 +78,9 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
   // Create alphaTab, load the score, and drive its cursor from the <audio> element.
   useEffect(() => {
     const container = containerRef.current;
+    const viewport = viewportRef.current;
     const audio = audioRef.current;
-    if (!container || !audio) return;
+    if (!container || !viewport || !audio) return;
     let api: AlphaTabApi | null = null;
     let raf = 0;
     let cancelled = false;
@@ -102,7 +105,10 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
           enableCursor: true,
           enableAnimatedBeatCursor: true,
           enableElementHighlighting: true,
-          scrollMode: alphaTab.ScrollMode.OffScreen,
+          // Keep the line with the current bar at the top of the score box.
+          scrollMode: alphaTab.ScrollMode.Continuous,
+          scrollElement: viewport,
+          scrollOffsetY: -8,
         },
       });
       apiRef.current = api;
@@ -227,7 +233,10 @@ export function Notation({ scorePath, syncPath }: { scorePath: string; syncPath:
       </div>
 
       {/* Sheet music reads best as black on paper in either theme. */}
-      <div className="notation-paper mt-4 overflow-hidden rounded-lg bg-white p-2 text-black shadow-sm ring-1 ring-black/5">
+      <div
+        ref={viewportRef}
+        className="notation-paper relative mt-4 max-h-[75vh] overflow-y-auto overscroll-contain rounded-lg bg-white p-2 text-black shadow-sm ring-1 ring-black/5"
+      >
         {status === "loading" && <p className="p-6 text-center text-sm text-neutral-500">Loading score…</p>}
         {status === "error" && (
           <p className="p-6 text-center text-sm text-neutral-500">The score couldn’t be loaded.</p>
