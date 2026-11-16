@@ -14,33 +14,55 @@ import type { Track } from "@/types/track";
 import { JewelCase } from "@/components/JewelCase";
 import { formatDate, formatDuration } from "@/lib/format";
 
-/** Pixels of horizontal drag that turn one page. */
-const DRAG_PX_PER_PAGE = 220;
+/** Pixels of horizontal drag that move one case. */
+const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
-/** Pages beyond this depth in either stack are drawn at the same depth (keeps big books compact). */
-const MAX_STACK = 8;
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** Space between neighbouring cases round the circle, in case widths. */
+const RING_SPACING = 1.3;
+/** How far the selected case comes forward out of the circle, in case widths. */
+const PULL_OUT = 0.9;
+/** The circle is seen slightly from above. */
+const TILT = 10; // degrees
+
+const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+/** Ring radius (case widths) so neighbouring cases have RING_SPACING between centres. */
+const ringRadius = (count: number) => RING_SPACING / 2 / Math.sin(Math.PI / Math.max(count, 3));
 
 /**
- * Home-page browser: CD jewel cases bound like pages of a book. The spine runs
- * down the middle (the case hinge sits on it); the current case lies open on
- * the right with its disc lifted out, earlier cases are turned over to the
- * left, later ones wait underneath on the right. Flip by dragging (the page
- * follows your finger), horizontal wheel, arrow keys, the side buttons, or by
- * clicking a case. Clicking the open case plays or pauses it.
+ * A case's offset from the selected position, wrapped round the circle
+ * (−n/2 … n/2; fractional while sliding), and how "selected" it is: 1 at the
+ * front, fading to 0 one step away. The ring itself rotates by the unwrapped
+ * position, so cases never sweep the long way round when offsets wrap.
  */
-export function CdBook({ tracks }: { tracks: Track[] }) {
+function layout(offset: number, count: number) {
+  const rel = mod(offset + count / 2, count) - count / 2;
+  return { rel, selectedness: Math.max(0, 1 - Math.abs(rel)) };
+}
+
+/**
+ * Home-page browser: CD jewel cases on a 3D circle. The selected case comes
+ * forward out of the circle to face you, with its disc lifted out; the rest
+ * stay spaced round the ring behind it. Turn the circle by dragging (it
+ * follows your finger), horizontal wheel, arrow keys, the buttons, or by
+ * clicking a case. Clicking the selected case plays or pauses it.
+ */
+export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const n = tracks.length;
   const audioRef = useRef<HTMLAudioElement>(null);
-  const bookRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
-  const [page, setPage] = useState(0);
+  // Unwrapped position, so turning past the last case keeps going the short way round.
+  const [position, setPosition] = useState(0);
+  const selected = n ? mod(position, n) : 0;
   const [drag, setDrag] = useState<number | null>(null); // pages turned so far in the current drag
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const dragStart = useRef<{ x: number; pointer: number } | null>(null);
+  // Latest drag amount, read on release (state may not have re-rendered after the last move).
+  const dragAmount = useRef<number | null>(null);
   const suppressClick = useRef(false);
   const wheelAccum = useRef(0);
   const wheelLock = useRef(0);
@@ -60,16 +82,22 @@ export function CdBook({ tracks }: { tracks: Track[] }) {
     };
   }, []);
 
-  // Keyboard users: keep focus on the open case as pages turn.
+  // Keyboard users: keep focus on the selected case as the row slides.
   useEffect(() => {
-    const book = bookRef.current;
+    const row = rowRef.current;
     const focused = document.activeElement;
-    if (!book || !(focused instanceof HTMLElement) || !focused.classList.contains("cd-page")) return;
-    if (!book.contains(focused)) return;
-    book.querySelectorAll<HTMLElement>(".cd-page")[page]?.focus({ preventScroll: true });
-  }, [page]);
+    if (!row || !(focused instanceof HTMLElement) || !focused.classList.contains("cd-item")) return;
+    if (!row.contains(focused)) return;
+    row.querySelectorAll<HTMLElement>(".cd-item")[selected]?.focus({ preventScroll: true });
+  }, [selected]);
 
-  const goTo = (i: number) => setPage(clamp(i, 0, n - 1));
+  /** Turn so case `i` is selected, the shortest way round. */
+  function goTo(i: number) {
+    let delta = mod(i - selected, n);
+    if (delta > n / 2) delta -= n;
+    setPosition((p) => p + delta);
+  }
+  const step = (by: number) => setPosition((p) => p + by);
 
   function togglePlay(track: Track) {
     const audio = audioRef.current;
@@ -100,53 +128,62 @@ export function CdBook({ tracks }: { tracks: Track[] }) {
       suppressClick.current = true;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     }
-    // Drag left to turn forward, like a real page. Resist past the covers.
-    if (suppressClick.current) setDrag(clamp(-dx / DRAG_PX_PER_PAGE, -page - 0.15, n - 1 - page + 0.15));
+    // Drag left to turn forward.
+    if (suppressClick.current) {
+      dragAmount.current = -dx / DRAG_PX_PER_STEP;
+      setDrag(dragAmount.current);
+    }
   }
 
   function endDrag(e: PointerEvent) {
     const start = dragStart.current;
     if (!start || start.pointer !== e.pointerId) return;
     dragStart.current = null;
-    if (drag !== null) goTo(page + Math.round(drag));
+    if (dragAmount.current !== null) step(Math.round(dragAmount.current));
+    dragAmount.current = null;
     setDrag(null);
     // Swallow only the click that ends this drag; later clicks (incl. keyboard) must work.
     if (suppressClick.current) setTimeout(() => (suppressClick.current = false), 0);
   }
 
   function onWheel(e: WheelEvent) {
-    // Only horizontal gestures turn pages; vertical scrolling scrolls the page.
+    // Only horizontal gestures move the row; vertical scrolling scrolls the page.
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
     wheelAccum.current += e.deltaX;
     const now = performance.now();
     if (Math.abs(wheelAccum.current) > 40 && now > wheelLock.current) {
-      goTo(page + Math.sign(wheelAccum.current));
+      step(Math.sign(wheelAccum.current));
       wheelAccum.current = 0;
       wheelLock.current = now + 320;
     }
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    const moves: Record<string, number> = { ArrowRight: page + 1, ArrowLeft: page - 1, Home: 0, End: n - 1 };
-    if (e.key in moves) {
+    const moves: Record<string, () => void> = {
+      ArrowRight: () => step(1),
+      ArrowLeft: () => step(-1),
+      Home: () => goTo(0),
+      End: () => goTo(n - 1),
+    };
+    if (moves[e.key]) {
       e.preventDefault();
-      goTo(moves[e.key]);
+      moves[e.key]();
     }
   }
 
   if (n === 0) return <p className="text-neutral-500">No tracks yet.</p>;
 
-  const active = tracks[page];
+  const active = tracks[selected];
   const activeIsPlaying = playingId === active.id && isPlaying;
-  const position = page + (drag ?? 0);
+  const turn = position + (drag ?? 0);
 
   return (
     <section aria-label="Tracks" aria-roledescription="carousel">
       <audio ref={audioRef} preload="none" />
 
       <div
-        ref={bookRef}
-        className="cd-book relative select-none"
+        ref={rowRef}
+        className="cd-carousel relative select-none"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -154,35 +191,45 @@ export function CdBook({ tracks }: { tracks: Track[] }) {
         onWheel={onWheel}
         onKeyDown={onKeyDown}
       >
-        <div className="cd-pages" data-dragging={drag !== null || undefined}>
+        <div
+          className="cd-ring"
+          data-dragging={drag !== null || undefined}
+          style={
+            {
+              "--n": Math.max(n, 3),
+              "--turn": turn,
+              "--radius": ringRadius(n),
+              "--pull": PULL_OUT,
+              "--tilt": `${TILT}deg`,
+            } as CSSProperties
+          }
+        >
           {tracks.map((track, i) => {
-            const isActive = i === page;
-            // rel < 0: turned (left); 0: open; > 0: still to come (right).
-            const rel = i - position;
-            const turned = clamp(-rel, 0, 1); // 0 = lying on the right, 1 = turned over to the left
-            const depth = Math.min(MAX_STACK, rel > 0 ? rel : Math.max(0, -rel - 1));
+            const isActive = i === selected;
+            const { rel, selectedness } = layout(i - turn, n);
             const style = {
-              "--angle": `${-180 * turned}deg`,
-              "--depth": depth,
-              "--lift": Math.sin(Math.PI * turned), // a turning page rises off the stacks
-              "--dim": Math.min(0.7, depth * 0.16),
+              "--i": i,
+              "--s": selectedness,
+              "--dim": Math.min(0.7, Math.max(0, Math.abs(rel) - 0.3) * 0.22),
             } as CSSProperties;
             return (
               <button
                 key={track.id}
                 type="button"
-                className="cd-page"
+                className="cd-item"
                 style={style}
                 onClick={() => {
                   if (suppressClick.current) return;
                   if (isActive) togglePlay(track);
                   else goTo(i);
                 }}
-                onFocus={() => !isActive && goTo(i)}
+                // Tabbing to a case selects it; a mouse press (which also focuses) must not,
+                // or every drag would start by jumping to the case under the pointer.
+                onFocus={(e) => !isActive && e.currentTarget.matches(":focus-visible") && goTo(i)}
                 aria-label={
                   isActive
                     ? `${playingId === track.id && isPlaying ? "Pause" : "Play"} ${track.title}`
-                    : `Turn to ${track.title}`
+                    : `Show ${track.title}`
                 }
                 aria-current={isActive ? "true" : undefined}
               >
@@ -196,20 +243,21 @@ export function CdBook({ tracks }: { tracks: Track[] }) {
             );
           })}
         </div>
-
-        <PageArrow direction="prev" disabled={page === 0} onClick={() => goTo(page - 1)} />
-        <PageArrow direction="next" disabled={page === n - 1} onClick={() => goTo(page + 1)} />
       </div>
 
-      <div className="flex justify-center gap-2" aria-hidden>
-        {tracks.map((t, i) => (
-          <span
-            key={t.id}
-            className={`h-1.5 rounded-full transition-all ${
-              i === page ? "w-6 bg-foreground" : "w-1.5 bg-neutral-300 dark:bg-neutral-700"
-            }`}
-          />
-        ))}
+      <div className="flex items-center justify-center gap-4">
+        <StepButton direction="prev" onClick={() => step(-1)} />
+        <div className="flex gap-2" aria-hidden>
+          {tracks.map((t, i) => (
+            <span
+              key={t.id}
+              className={`h-1.5 rounded-full transition-all ${
+                i === selected ? "w-6 bg-foreground" : "w-1.5 bg-neutral-300 dark:bg-neutral-700"
+              }`}
+            />
+          ))}
+        </div>
+        <StepButton direction="next" onClick={() => step(1)} />
       </div>
 
       <div className="mx-auto mt-8 max-w-md text-center" aria-live="polite">
@@ -245,17 +293,13 @@ export function CdBook({ tracks }: { tracks: Track[] }) {
   );
 }
 
-function PageArrow({ direction, disabled, onClick }: { direction: "prev" | "next"; disabled: boolean; onClick: () => void }) {
+function StepButton({ direction, onClick }: { direction: "prev" | "next"; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      onPointerDown={(e) => e.stopPropagation()}
-      disabled={disabled}
       aria-label={direction === "prev" ? "Previous track" : "Next track"}
-      className={`absolute top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-neutral-300 bg-background/80 text-lg backdrop-blur transition hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-0 sm:flex dark:border-neutral-700 dark:hover:bg-neutral-900 ${
-        direction === "prev" ? "left-0" : "right-0"
-      }`}
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 text-lg transition hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-900"
     >
       {direction === "prev" ? "‹" : "›"}
     </button>

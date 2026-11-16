@@ -1,4 +1,4 @@
-import { CdBook } from "@/components/CdBook";
+import { CdCarousel } from "@/components/CdCarousel";
 import { getTracks } from "@/lib/tracks";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export default async function Home() {
         <h1 className="text-3xl font-bold tracking-tight">My Music</h1>
         <p className="mt-2 text-neutral-500">Scroll through, listen, and download free.</p>
       </header>
-      <CdBook tracks={tracks} />
+      <CdCarousel tracks={tracks} />
     </main>
   );
 }
