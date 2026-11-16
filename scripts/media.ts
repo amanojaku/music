@@ -4,8 +4,8 @@
  *   npm run media -- cors                 apply r2-cors.json to the bucket (lets the site's
  *                                         visuals and notation read files cross-origin)
  *   npm run media -- upload <slug> [--dry-run]
- *                                         upload a local track's files to tracks/<slug>/… and
- *                                         point its entry in src/data/local-tracks.json at them
+ *                                         upload a track's local files to tracks/<slug>/… and point
+ *                                         its entry (in tracks.json or local-tracks.json) at them
  *   npm run media -- replace <slug> <audio|download|notation|sync> <file>
  *                                         overwrite one already-uploaded file, e.g. a score
  *                                         re-exported from MuseScore
@@ -14,12 +14,12 @@
  * naming them after the track, so the download route can simply redirect to them.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { CONTENT_TYPES, downloadDisposition, isBucketKey } from "../src/lib/media";
 import type { Track } from "../src/types/track";
+import { findTrack, saveTrack } from "./track-data";
 
-const LOCAL_TRACKS = "src/data/local-tracks.json";
 const WRANGLER = path.join(process.cwd(), "node_modules/.bin/wrangler");
 
 try {
@@ -56,8 +56,11 @@ const FIELD_BY_NAME = {
   sync: "syncPath",
 } as const;
 
-function readTracks(): Track[] {
-  return JSON.parse(readFileSync(LOCAL_TRACKS, "utf8"));
+/** A track whose entry the script can update (not one of the generated mock tracks). */
+function editableTrack(slug: string) {
+  const { track, file } = findTrack(slug);
+  if (!file) throw new Error(`"${slug}" is a generated test track; add it to src/data/tracks.json first`);
+  return { track, file };
 }
 
 /** Upload `file` to `key` with the right headers for `field`. */
@@ -84,8 +87,7 @@ function put(track: Track, field: (typeof FILES)[number]["field"], file: string,
 function replace(slug: string, name: string, file: string) {
   const field = FIELD_BY_NAME[name as keyof typeof FIELD_BY_NAME];
   if (!field) throw new Error(`Unknown file "${name}" (use audio, download, notation or sync)`);
-  const track = readTracks().find((t) => t.slug === slug);
-  if (!track) throw new Error(`No track "${slug}" in ${LOCAL_TRACKS}`);
+  const { track } = editableTrack(slug);
   const key = track[field];
   if (!key || !isBucketKey(key)) throw new Error(`${slug}'s ${name} isn't in the bucket yet; run upload first`);
   if (!existsSync(file)) throw new Error(`${file} not found`);
@@ -97,9 +99,7 @@ function replace(slug: string, name: string, file: string) {
 }
 
 function upload(slug: string, dryRun: boolean) {
-  const tracks = readTracks();
-  const track = tracks.find((t) => t.slug === slug);
-  if (!track) throw new Error(`No track "${slug}" in ${LOCAL_TRACKS}`);
+  const { track, file: trackFile } = editableTrack(slug);
 
   let changed = 0;
   for (const { field, name } of FILES) {
@@ -117,9 +117,9 @@ function upload(slug: string, dryRun: boolean) {
   }
 
   if (!changed) return console.log(`Nothing to upload: ${slug}'s files are already in the bucket.`);
-  if (dryRun) return console.log("(dry run: nothing uploaded, local-tracks.json unchanged)");
-  writeFileSync(LOCAL_TRACKS, JSON.stringify(tracks, null, 2) + "\n");
-  console.log(`Updated ${LOCAL_TRACKS}. Local copies in public/ were left in place.`);
+  if (dryRun) return console.log(`(dry run: nothing uploaded, ${trackFile} unchanged)`);
+  saveTrack(trackFile, track);
+  console.log(`Updated ${trackFile}. Local copies in public/ were left in place.`);
 }
 
 function main() {

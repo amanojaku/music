@@ -3,8 +3,8 @@
  *
  *   npm run transcribe -- <slug> <recording.wav> [--bpm 84] [--beats 4] [--shift 1] [--backend wasm|cpu]
  *
- * Reads the track's title, key and tuning from the track data (mock or
- * src/data/local-tracks.json), then writes to public/notation/<slug>/:
+ * Reads the track's title, key and tuning from the track data (src/data/tracks.json,
+ * local-tracks.json or the mock tracks), then writes to public/notation/<slug>/:
  *   score.musicxml  draft notation + tab; open in MuseScore to tidy, then export MusicXML over it
  *   sync.json       per-bar times in the recording, so the cursor follows the audio
  *   raw.mid         unquantised notes straight from Basic Pitch
@@ -23,7 +23,7 @@ import {
   outputToNotesPoly,
 } from "@spotify/basic-pitch";
 import { generateFileData } from "@spotify/basic-pitch/esm/toMidi.js";
-import { mockTracks } from "../src/data/mock-tracks";
+import { findTrack as findTrackIn } from "./track-data";
 import { STANDARD_TUNING, noteToMidi } from "../src/lib/music-theory";
 import type { DetectedNote } from "../src/lib/notation/beats";
 import { buildTranscription } from "../src/lib/notation/score";
@@ -59,14 +59,7 @@ function parseArgs(argv: string[]) {
 }
 
 function findTrack(slug: string): Track {
-  let local: Track[] = [];
-  try {
-    local = JSON.parse(readFileSync("src/data/local-tracks.json", "utf8"));
-  } catch {
-    // no local tracks
-  }
-  const track = [...mockTracks, ...local].find((t) => t.slug === slug);
-  if (!track) throw new Error(`No track with slug "${slug}"`);
+  const { track } = findTrackIn(slug);
   if (!track.keyTonic || !track.keyMode) throw new Error(`Track "${slug}" needs keyTonic and keyMode`);
   return track;
 }

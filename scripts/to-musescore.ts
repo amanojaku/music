@@ -14,23 +14,11 @@ import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { mockTracks } from "../src/data/mock-tracks";
+import { findTrack } from "./track-data";
 import { noteToMidi, STANDARD_TUNING } from "../src/lib/music-theory";
-import type { Track } from "../src/types/track";
 
 const MSCORE = process.env.MSCORE ?? "/Applications/MuseScore 4.app/Contents/MacOS/mscore";
 
-function findTrack(slug: string): Track {
-  let local: Track[] = [];
-  try {
-    local = JSON.parse(readFileSync("src/data/local-tracks.json", "utf8"));
-  } catch {
-    // no local tracks
-  }
-  const track = [...mockTracks, ...local].find((t) => t.slug === slug);
-  if (!track) throw new Error(`No track with slug "${slug}"`);
-  return track;
-}
 
 /** MuseScore element ids look like "jPCKk25BoXK_G4ixtGRMH1C". */
 const newEid = () => {
@@ -107,7 +95,7 @@ function main() {
     process.exit(1);
   }
   if (!existsSync(MSCORE)) throw new Error(`MuseScore not found at ${MSCORE} (set MSCORE to override)`);
-  const track = findTrack(slug);
+  const { track } = findTrack(slug);
   const dir = path.join(process.cwd(), "public/notation", slug);
   const source = path.join(dir, "score.musicxml");
   if (!existsSync(source)) throw new Error(`No ${path.relative(process.cwd(), source)} — run npm run transcribe first`);
