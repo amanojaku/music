@@ -25,58 +25,62 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- 3D CD carousel ---------- */
+/* ---------- CD book: jewel cases bound like pages ---------- */
 
-/* Stage: the camera. Case size drives everything; ring radius fits n cases round the circle. */
-.cd-stage {
-  --case-w: 10.5rem;
+/* The camera. Case size drives everything. */
+.cd-book {
+  --case-w: 10rem;
   --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
   --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
-  --radius: max(calc(var(--case-w) * 0.95), calc(var(--case-w) * 0.62 / tan(180deg / var(--n))));
-  height: calc(var(--case-h) * 2.05);
-  perspective: 1600px;
-  perspective-origin: 50% 30%;
+  height: calc(var(--case-h) * 2);
+  perspective: 1800px;
+  perspective-origin: 50% 25%;
   overflow: clip;
-  touch-action: pan-y; /* horizontal drags turn the ring, vertical ones scroll the page */
+  touch-action: pan-y; /* horizontal drags turn pages, vertical ones scroll the page */
   cursor: grab;
 }
-.cd-stage:active {
+.cd-book:active {
   cursor: grabbing;
 }
 @media (min-width: 640px) {
-  .cd-stage {
-    --case-w: 16rem;
+  .cd-book {
+    --case-w: 17rem;
   }
 }
 
-/* Ring: pushed back by its radius (so the front case sits at normal size), tilted to show the circle. */
-.cd-ring {
+/* The book, leaning back a little so the thickness of both stacks shows. */
+.cd-pages {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(-8deg) translateZ(calc(-1 * var(--radius))) rotateY(calc(var(--turn) * -360deg / var(--n)));
-  transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
-}
-.cd-ring[data-dragging] {
-  transition: none;
+  transform: rotateX(20deg);
 }
 
-.cd-slot {
+/*
+ * One page per case, hinged on its left edge at the spine (the middle of the
+ * book). --angle: 0 lies open on the right, -180deg is turned over to the left.
+ * --depth sinks it into its stack; --lift raises a page while it turns.
+ */
+.cd-page {
   position: absolute;
   left: 50%;
   top: 60%;
   width: var(--case-w);
   height: var(--case-h);
-  margin-left: calc(var(--case-w) / -2);
   margin-top: calc(var(--case-h) / -2);
   padding: 0;
   border: 0;
   background: none;
+  transform-origin: 0 50%;
   transform-style: preserve-3d;
-  transform: rotateY(calc(var(--i) * 360deg / var(--n))) translateZ(var(--radius));
+  transform: translateZ(calc((var(--lift) * 3 - var(--depth) * 1.15) * var(--case-d))) rotateY(var(--angle));
+  transition: transform 850ms cubic-bezier(0.3, 0.7, 0.2, 1);
   cursor: inherit;
 }
-.cd-slot:focus-visible {
+.cd-pages[data-dragging] .cd-page {
+  transition: none;
+}
+.cd-page:focus-visible {
   outline: 2px solid var(--foreground);
   outline-offset: 6px;
 }
@@ -214,7 +218,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cd-ring,
+  .cd-page,
   .jewel-disc,
   .jewel-face::after {
     transition: none;
