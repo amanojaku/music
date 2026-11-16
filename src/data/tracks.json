@@ -9,7 +9,6 @@
     "releasedAt": "2025-08-17",
     "audioPath": "tracks/river-song/audio.m4a",
     "downloadPath": "tracks/river-song/download.wav",
-    "coverUrl": null,
     "keyTonic": "E",
     "keyMode": "major",
     "tuning": [
@@ -21,6 +20,7 @@
       "E4"
     ],
     "notationPath": "tracks/river-song/score.musicxml",
-    "syncPath": "tracks/river-song/sync.json"
+    "syncPath": "tracks/river-song/sync.json",
+    "coverPath": null
   }
 ]

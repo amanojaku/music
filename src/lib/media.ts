@@ -24,6 +24,10 @@ export const CONTENT_TYPES: Record<string, string> = {
   ".wav": "audio/wav",
   ".flac": "audio/flac",
   ".ogg": "audio/ogg",
+  ".webp": "image/webp",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
   ".musicxml": "application/vnd.recordare.musicxml+xml",
   ".json": "application/json",
 };

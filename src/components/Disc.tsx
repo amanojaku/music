@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Track } from "@/types/track";
 import { hueFor } from "@/lib/colour";
+import { mediaUrl } from "@/lib/media";
 
 type Props = {
   track: Track;
@@ -15,7 +16,7 @@ export function Disc({ track, spinning = false, paused = false, className = "" }
   const labelStyle = {
     "--label-from": `hsl(${hue} 70% 58%)`,
     "--label-to": `hsl(${(hue + 40) % 360} 65% 32%)`,
-    ...(track.coverUrl ? { backgroundImage: `url(${track.coverUrl})` } : {}),
+    ...(track.coverPath ? { backgroundImage: `url("${mediaUrl(track.coverPath)}")` } : {}),
   } as CSSProperties;
   const year = new Date(track.releasedAt).getFullYear();
 

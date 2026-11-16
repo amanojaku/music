@@ -6,9 +6,11 @@
  *   npm run media -- upload <slug> [--dry-run]
  *                                         upload a track's local files to tracks/<slug>/… and point
  *                                         its entry (in tracks.json or local-tracks.json) at them
- *   npm run media -- replace <slug> <audio|download|notation|sync> <file>
+ *   npm run media -- replace <slug> <audio|download|notation|sync|cover> <file>
  *                                         overwrite one already-uploaded file, e.g. a score
  *                                         re-exported from MuseScore
+ *   npm run media -- cover <slug> <image>  upload a square cover image (WebP/JPEG/PNG, ~800×800)
+ *                                         and set the track's coverPath
  *
  * Reads R2_BUCKET from .env.local. Downloads are uploaded with a Content-Disposition
  * naming them after the track, so the download route can simply redirect to them.
@@ -38,7 +40,7 @@ const wrangler = (...args: string[]) => execFileSync(WRANGLER, args, { stdio: "i
 
 /** Which track fields hold files, what to call them in the bucket, and how to serve them. */
 const FILES: Array<{
-  field: keyof Pick<Track, "audioPath" | "downloadPath" | "notationPath" | "syncPath">;
+  field: keyof Pick<Track, "audioPath" | "downloadPath" | "notationPath" | "syncPath" | "coverPath">;
   name: (ext: string) => string;
   cache: string;
 }> = [
@@ -47,6 +49,7 @@ const FILES: Array<{
   // Notation may be re-uploaded after edits in MuseScore, so keep its cache short.
   { field: "notationPath", name: () => "score.musicxml", cache: "public, max-age=300" },
   { field: "syncPath", name: () => "sync.json", cache: "public, max-age=300" },
+  { field: "coverPath", name: (ext) => `cover${ext}`, cache: "public, max-age=86400" },
 ];
 
 const FIELD_BY_NAME = {
@@ -54,7 +57,25 @@ const FIELD_BY_NAME = {
   download: "downloadPath",
   notation: "notationPath",
   sync: "syncPath",
+  cover: "coverPath",
 } as const;
+
+const IMAGE_TYPES = [".webp", ".jpg", ".jpeg", ".png"];
+
+/** Upload a cover image to tracks/<slug>/cover.<ext> and point the track at it. */
+function cover(slug: string, file: string) {
+  const { track, file: trackFile } = editableTrack(slug);
+  if (!existsSync(file)) throw new Error(`${file} not found`);
+  const ext = path.extname(file).toLowerCase();
+  if (!IMAGE_TYPES.includes(ext))
+    throw new Error(`Cover must be ${IMAGE_TYPES.join(", ")} (got ${ext || "no extension"})`);
+  const key = `tracks/${slug}/cover${ext}`;
+  console.log(`cover: ${file} → ${key}`);
+  put(track, "coverPath", file, key);
+  track.coverPath = key;
+  saveTrack(trackFile, track);
+  console.log(`Updated ${trackFile}.`);
+}
 
 /** A track whose entry the script can update (not one of the generated mock tracks). */
 function editableTrack(slug: string) {
@@ -86,7 +107,7 @@ function put(track: Track, field: (typeof FILES)[number]["field"], file: string,
 
 function replace(slug: string, name: string, file: string) {
   const field = FIELD_BY_NAME[name as keyof typeof FIELD_BY_NAME];
-  if (!field) throw new Error(`Unknown file "${name}" (use audio, download, notation or sync)`);
+  if (!field) throw new Error(`Unknown file "${name}" (use audio, download, notation, sync or cover)`);
   const { track } = editableTrack(slug);
   const key = track[field];
   if (!key || !isBucketKey(key)) throw new Error(`${slug}'s ${name} isn't in the bucket yet; run upload first`);
@@ -127,8 +148,9 @@ function main() {
   if (command === "cors") return wrangler("r2", "bucket", "cors", "set", bucket(), "--file", "r2-cors.json");
   if (command === "upload" && slug) return upload(slug, process.argv.includes("--dry-run"));
   if (command === "replace" && slug && name && file) return replace(slug, name, file);
+  if (command === "cover" && slug && name) return cover(slug, name);
   console.error(
-    "Usage: npm run media -- cors | upload <slug> [--dry-run] | replace <slug> <audio|download|notation|sync> <file>",
+    "Usage: npm run media -- cors | upload <slug> [--dry-run] | replace <slug> <audio|download|notation|sync|cover> <file> | cover <slug> <image>",
   );
   process.exit(1);
 }

@@ -14,7 +14,8 @@ export interface Track {
   audioPath: string;
   /** Full-quality file for downloads (e.g. WAV). Falls back to audioPath. */
   downloadPath: string | null;
-  coverUrl: string | null;
+  /** Square cover image (local "/…" path or media-bucket key). Null = generated artwork. */
+  coverPath: string | null;
   /** Tonic in ASCII, e.g. "G", "F#", "Bb". Null if not set. */
   keyTonic: Tonic | null;
   keyMode: Mode | null;

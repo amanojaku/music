@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import type { Track } from "@/types/track";
 import { hueFor } from "@/lib/colour";
+import { mediaUrl } from "@/lib/media";
 
 /**
- * Square album artwork. Uses the track's cover image when it has one,
+ * Square album artwork. Uses the track's cover image (coverPath) when it has one,
  * otherwise generated art in the track's label colours.
  */
 export function CoverArt({ track, className = "" }: { track: Track; className?: string }) {
@@ -14,10 +15,15 @@ export function CoverArt({ track, className = "" }: { track: Track; className?: 
     "--cover-c": `hsl(${(hue + 200) % 360} 80% 70%)`,
   } as CSSProperties;
 
-  if (track.coverUrl) {
+  if (track.coverPath) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- decorative art inside a 3D transform
-      <img src={track.coverUrl} alt="" className={`h-full w-full object-cover ${className}`} draggable={false} />
+      <img
+        src={mediaUrl(track.coverPath)}
+        alt=""
+        className={`h-full w-full object-cover ${className}`}
+        draggable={false}
+      />
     );
   }
 
