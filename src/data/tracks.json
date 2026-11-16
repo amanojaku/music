@@ -21,6 +21,6 @@
     ],
     "notationPath": "tracks/river-song/score.musicxml",
     "syncPath": "tracks/river-song/sync.json",
-    "coverPath": null
+    "coverPath": "tracks/river-song/cover.jpg"
   }
 ]
