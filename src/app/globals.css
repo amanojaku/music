@@ -25,14 +25,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ---------- CD carousel: selected case at the centre, the rest fanned round it by their spines ---------- */
+/* ---------- CD carousel: selected case facing you, the rest curving forward at 33° steps ---------- */
 
 /* The camera. Case size drives everything. */
 .cd-carousel {
   --case-w: 8.5rem;
   --case-h: calc(var(--case-w) * 0.88); /* jewel case is 142 × 125 mm */
   --case-d: calc(var(--case-w) * 0.075); /* … and 10 mm deep */
-  height: calc(var(--case-h) * 2.3);
+  height: calc(var(--case-h) * 2.7);
   perspective: 1600px;
   perspective-origin: 50% 25%;
   overflow: clip;
@@ -60,27 +60,26 @@ body {
   transition: none;
 }
 
-/*
- * Cases hinge on their spine (left edge). --sx / --sz place the spine (case
- * widths from the centre); --angle turns the case about it; --s (0–1) stands
- * the selected case upright to face you.
- */
+/* --x / --z (case widths) and --angle place a case; --s (0–1) stands the selected one upright to face you. */
 .cd-item {
   position: absolute;
   left: 50%;
-  top: 60%;
+  top: 54%;
   width: var(--case-w);
   height: var(--case-h);
+  margin-left: calc(var(--case-w) / -2);
   margin-top: calc(var(--case-h) / -2);
   padding: 0;
   border: 0;
   background: none;
-  transform-origin: 0 50%;
   transform-style: preserve-3d;
-  transform: translateX(calc(var(--sx) * var(--case-w))) translateZ(calc(var(--sz) * var(--case-w)))
+  transform: translateX(calc(var(--x) * var(--case-w))) translateZ(calc(var(--z) * var(--case-w)))
     rotateY(var(--angle)) rotateX(calc(var(--s) * var(--tilt)));
   transition: transform 750ms cubic-bezier(0.2, 0.75, 0.25, 1);
   cursor: inherit;
+}
+.cd-item[data-hidden] {
+  visibility: hidden;
 }
 .cd-item:focus-visible {
   outline: 2px solid var(--foreground);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -18,65 +19,45 @@ import { formatDate, formatDuration } from "@/lib/format";
 const DRAG_PX_PER_STEP = 180;
 const CLICK_SLOP_PX = 6;
 
-// Layout, in case widths. The selected case stands at the centre C facing you; the others
-// fan round it on a semicircle like spokes, each with its spine (hinge edge) towards C.
-/** Distance from C to each fanned case's spine (a little over half a case, so neighbours clear the selected one). */
-const SPINE_RADIUS = 0.62;
-/** The scene is seen slightly from above, which also shows the fan's shape. */
-const TILT = 22; // degrees
+// Layout, in case widths. The selected case faces you; each case further out turns another
+// STEP_ANGLE towards the middle, so the row curves forward round the viewer like a curved wall.
+/** Extra turn per case away from the selected one. */
+const STEP_ANGLE = 33; // degrees
+/** Distance between neighbouring case centres (1 = touching edge to edge). */
+const SPACING = 1.15;
+/** The scene is seen slightly from above. */
+const TILT = 8; // degrees
+/** Cases turned further than this are past the side of the view and hidden. */
+const MAX_VISIBLE_ANGLE = 110; // degrees
 
 const mod = (n: number, m: number) => ((n % m) + m) % m;
 const rad = (deg: number) => (deg * Math.PI) / 180;
 
-/**
- * Where a case's spine sits (sx, sz) and which way the case points from it
- * (angle, a rotateY about the spine: 0 = flat, reaching right, front facing
- * you; 180 = flat, reaching left, back facing you).
- */
-type Pose = { sx: number; sz: number; angle: number };
-
-/** On the fan at `theta` degrees from straight behind C (−90 left … +90 right): pointing away from C. */
-const onFan = (theta: number): Pose => ({
-  sx: SPINE_RADIUS * Math.sin(rad(theta)),
-  sz: -SPINE_RADIUS * Math.cos(rad(theta)),
-  angle: 90 - theta,
-});
-
-/** The selected case: centred on C, facing you. */
-const SELECTED: Pose = { sx: -0.5, sz: 0, angle: 0 };
+/** Radius of the curve the cases sit on (its centre is in front of the selected case). */
+const CURVE_RADIUS = SPACING / (2 * Math.sin(rad(STEP_ANGLE / 2)));
 
 /**
  * Pose for a case `offset` steps from the selected one (fractional while
- * sliding; wraps round). Nearest neighbours lie flat either side of the
- * selected case; the furthest meet straight behind it, so wrapping happens
- * there without a jump. Within one step of the centre a case glides (right)
- * or turns over like a page (left) between the centre and the end of the fan.
+ * sliding; wraps round). Each step out turns the case STEP_ANGLE further
+ * towards the middle and moves it along the curve.
  */
 function layout(offset: number, count: number) {
   const rel = mod(offset + count / 2, count) - count / 2; // −n/2 … n/2
-  const a = Math.abs(rel);
-  const side = rel < 0 ? -1 : 1;
-  const selectedness = Math.max(0, 1 - a);
-  const far = Math.max(1, count / 2 - 1); // steps from a fan end round to the back
-
-  let pose: Pose;
-  if (a >= 1) {
-    pose = onFan(side * 90 * (1 - Math.min(1, (a - 1) / far)));
-  } else {
-    const end = onFan(side * 90);
-    pose = {
-      sx: SELECTED.sx + (end.sx - SELECTED.sx) * a,
-      sz: SELECTED.sz + (end.sz - SELECTED.sz) * a,
-      angle: SELECTED.angle + (end.angle - SELECTED.angle) * a,
-    };
-  }
-  return { rel, selectedness, ...pose };
+  const theta = rel * STEP_ANGLE;
+  return {
+    rel,
+    selectedness: Math.max(0, 1 - Math.abs(rel)),
+    x: CURVE_RADIUS * Math.sin(rad(theta)),
+    z: CURVE_RADIUS * (1 - Math.cos(rad(theta))),
+    angle: -theta,
+    hidden: Math.abs(theta) > MAX_VISIBLE_ANGLE,
+  };
 }
 
 /**
- * Home-page browser: the selected CD jewel case stands at the centre facing
- * you, disc lifted out; the others fan round it on a semicircle like spokes,
- * each with its spine pointing at the centre. Slide by
+ * Home-page browser: the selected CD jewel case faces you, disc lifted out;
+ * the cases either side are turned 33° towards it, the next ones 66°, and so
+ * on, curving forward round the viewer. Slide by
  * dragging (cases follow your finger), horizontal wheel, arrow keys, the
  * buttons, or by clicking a case. Clicking the selected case plays or pauses it.
  */
@@ -93,6 +74,9 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const dragStart = useRef<{ x: number; pointer: number } | null>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Each case's previous offset, to spot cases wrapping round from one end to the other.
+  const lastRel = useRef<number[]>([]);
   // Latest drag amount, read on release (state may not have re-rendered after the last move).
   const dragAmount = useRef<number | null>(null);
   const suppressClick = useRef(false);
@@ -203,11 +187,26 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
     }
   }
 
+  const turn = position + (drag ?? 0);
+
+  // A case wrapping from one end of the curve to the other would sweep across the front
+  // of the view. Before the browser paints, switch its transition off so it jumps instead
+  // (it's out at the edge when it does), then switch it back on.
+  useLayoutEffect(() => {
+    itemRefs.current.forEach((el, i) => {
+      const { rel } = layout(i - turn, n);
+      const previous = lastRel.current[i];
+      lastRel.current[i] = rel;
+      if (!el || previous === undefined || Math.abs(rel - previous) <= n / 2) return;
+      el.style.transition = "none";
+      requestAnimationFrame(() => requestAnimationFrame(() => (el.style.transition = "")));
+    });
+  }, [turn, n]);
+
   if (n === 0) return <p className="text-neutral-500">No tracks yet.</p>;
 
   const active = tracks[selected];
   const activeIsPlaying = playingId === active.id && isPlaying;
-  const turn = position + (drag ?? 0);
 
   return (
     <section aria-label="Tracks" aria-roledescription="carousel">
@@ -230,10 +229,10 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
         >
           {tracks.map((track, i) => {
             const isActive = i === selected;
-            const { rel, selectedness, sx, sz, angle } = layout(i - turn, n);
+            const { rel, selectedness, x, z, angle, hidden } = layout(i - turn, n);
             const style = {
-              "--sx": sx,
-              "--sz": sz,
+              "--x": x,
+              "--z": z,
               "--angle": `${angle}deg`,
               "--s": selectedness,
               "--dim": Math.min(0.7, Math.max(0, Math.abs(rel) - 0.3) * 0.22),
@@ -243,6 +242,11 @@ export function CdCarousel({ tracks }: { tracks: Track[] }) {
                 key={track.id}
                 type="button"
                 className="cd-item"
+                ref={(el) => {
+                  itemRefs.current[i] = el;
+                }}
+                data-hidden={hidden || undefined}
+                tabIndex={hidden ? -1 : undefined}
                 style={style}
                 onClick={() => {
                   if (suppressClick.current) return;
